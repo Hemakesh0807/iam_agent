@@ -9,7 +9,6 @@ from shared.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
 
-# Microsoft Graph API scope
 GRAPH_SCOPE = ["https://graph.microsoft.com/.default"]
 
 
@@ -23,7 +22,7 @@ class TokenCache:
         self._token: str | None = None
         self._expires_at: float = 0.0
         self._lock = Lock()
-        self._refresh_buffer_seconds = 300  # Refresh 5 min before expiry
+        self._refresh_buffer_seconds = 300
 
     def get(self) -> str | None:
         with self._lock:
@@ -44,8 +43,8 @@ def get_access_token() -> str:
     """
     Acquire a Microsoft Graph API access token.
 
-    On Azure (production): uses managed identity — no credentials needed.
-    Locally (dev): falls back to service principal client credentials.
+    Local dev : AZURE_CLIENT_ID + AZURE_CLIENT_SECRET present -> service principal.
+    Azure prod: neither set -> managed identity (no credentials needed).
 
     Returns the bearer token string.
     Raises AuthenticationError on failure.
@@ -62,20 +61,24 @@ def get_access_token() -> str:
 
 
 def _acquire_token() -> tuple[str, int]:
-    """Internal: acquire token via managed identity or service principal."""
+    """
+    Route to the correct auth method based on environment.
 
-    # ── Managed identity (Azure production) ───────────────────────────────────
-    if not config.client_id or not config.client_secret:
-        return _acquire_via_managed_identity()
+    - AZURE_CLIENT_ID set  -> local/CI -> service principal credentials flow.
+    - AZURE_CLIENT_ID unset -> Azure  -> managed identity (never attempted locally).
+    """
+    if config.client_id and config.client_secret:
+        logger.debug("Auth mode: service principal (local/CI).")
+        return _acquire_via_service_principal()
 
-    # ── Service principal (local dev / CI) ────────────────────────────────────
-    return _acquire_via_service_principal()
+    logger.debug("Auth mode: managed identity (Azure).")
+    return _acquire_via_managed_identity()
 
 
 def _acquire_via_managed_identity() -> tuple[str, int]:
     """
     Acquire token using the Azure managed identity assigned to the Function App.
-    No credentials — Azure handles this automatically.
+    Only called when running on Azure -- will fail locally.
     """
     try:
         app = msal.ManagedIdentityApplication(
@@ -85,7 +88,8 @@ def _acquire_via_managed_identity() -> tuple[str, int]:
 
         if "access_token" not in result:
             raise AuthenticationError(
-                f"Managed identity token acquisition failed: {result.get('error_description', 'unknown error')}"
+                f"Managed identity token acquisition failed: "
+                f"{result.get('error_description', 'unknown error')}"
             )
 
         return result["access_token"], result.get("expires_in", 3600)
@@ -93,13 +97,15 @@ def _acquire_via_managed_identity() -> tuple[str, int]:
     except AuthenticationError:
         raise
     except Exception as exc:
-        raise AuthenticationError(f"Managed identity authentication failed: {exc}") from exc
+        raise AuthenticationError(
+            f"Managed identity authentication failed: {exc}"
+        ) from exc
 
 
 def _acquire_via_service_principal() -> tuple[str, int]:
     """
-    Acquire token using a service principal (client credentials flow).
-    Used only for local development and CI pipelines.
+    Acquire token using client credentials (service principal).
+    Used for local development and CI pipelines.
     """
     try:
         authority = f"https://login.microsoftonline.com/{config.tenant_id}"
@@ -113,7 +119,8 @@ def _acquire_via_service_principal() -> tuple[str, int]:
 
         if "access_token" not in result:
             raise AuthenticationError(
-                f"Service principal token acquisition failed: {result.get('error_description', 'unknown error')}"
+                f"Service principal token acquisition failed: "
+                f"{result.get('error_description', 'unknown error')}"
             )
 
         return result["access_token"], result.get("expires_in", 3600)
@@ -121,4 +128,6 @@ def _acquire_via_service_principal() -> tuple[str, int]:
     except AuthenticationError:
         raise
     except Exception as exc:
-        raise AuthenticationError(f"Service principal authentication failed: {exc}") from exc
+        raise AuthenticationError(
+            f"Service principal authentication failed: {exc}"
+        ) from exc

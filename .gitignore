@@ -1,0 +1,6 @@
+# agentic-iam/.gitignore
+.env
+audit.jsonl
+__pycache__/
+*.pyc
+.pytest_cache/

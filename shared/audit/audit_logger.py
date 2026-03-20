@@ -1,19 +1,23 @@
+import json
 import logging
 from datetime import datetime
-
-from azure.cosmos.aio import CosmosClient
-from azure.cosmos.exceptions import CosmosHttpResponseError
+from pathlib import Path
 
 from shared.config import config
 from shared.models import AuditLogEntry, FlowName, FlowStatus
 
 logger = logging.getLogger(__name__)
 
+# Local audit log file path (used when Cosmos DB is not configured)
+_LOCAL_LOG_PATH = Path(__file__).resolve().parent.parent.parent / "audit.jsonl"
+
 
 class AuditLogger:
     """
-    Writes structured audit log entries to the Cosmos DB 'audit-log' container.
-    Every action taken by either bot — successful or failed — must be logged here.
+    Writes structured audit log entries to Cosmos DB (production)
+    or a local .jsonl file (local dev when COSMOS_DB_ENDPOINT is not set).
+
+    Every action taken by either bot must be logged here regardless of success or failure.
 
     Usage:
         audit = AuditLogger()
@@ -30,9 +34,19 @@ class AuditLogger:
     CONTAINER_NAME = "audit-log"
 
     def __init__(self):
-        self._client = CosmosClient(config.cosmos_endpoint, credential=config.cosmos_key)
-        self._db = self._client.get_database_client(config.cosmos_database)
-        self._container = self._db.get_container_client(self.CONTAINER_NAME)
+        self._use_cosmos = bool(config.cosmos_endpoint and config.cosmos_key)
+
+        if self._use_cosmos:
+            from azure.cosmos.aio import CosmosClient
+            self._client = CosmosClient(config.cosmos_endpoint, credential=config.cosmos_key)
+            self._db = self._client.get_database_client(config.cosmos_database)
+            self._container = self._db.get_container_client(self.CONTAINER_NAME)
+            logger.info("AuditLogger: using Cosmos DB.")
+        else:
+            logger.warning(
+                "AuditLogger: COSMOS_DB_ENDPOINT not set. "
+                "Writing audit logs to local file: %s", _LOCAL_LOG_PATH
+            )
 
     async def log(
         self,
@@ -56,16 +70,10 @@ class AuditLogger:
             error=error,
         )
 
-        try:
-            await self._container.create_item(body=entry.model_dump(mode="json"))
-            logger.info(
-                "Audit log written: flow=%s status=%s principal=%s",
-                flow_name.value, status.value, principal_id,
-            )
-        except CosmosHttpResponseError as exc:
-            # Never let audit logging failure break the main flow
-            # But always surface it in application logs
-            logger.error("Failed to write audit log entry: %s", exc)
+        if self._use_cosmos:
+            await self._write_to_cosmos(entry)
+        else:
+            self._write_to_file(entry)
 
         return entry
 
@@ -86,3 +94,27 @@ class AuditLogger:
             details=details,
             error=str(error),
         )
+
+    async def _write_to_cosmos(self, entry: AuditLogEntry) -> None:
+        try:
+            from azure.cosmos.exceptions import CosmosHttpResponseError
+            await self._container.create_item(body=entry.model_dump(mode="json"))
+            logger.info(
+                "Audit log -> Cosmos: flow=%s status=%s principal=%s",
+                entry.flow_name.value, entry.status.value, entry.principal_id,
+            )
+        except Exception as exc:
+            # Never let audit logging failure break the main flow
+            logger.error("Failed to write audit log to Cosmos DB: %s", exc)
+
+    def _write_to_file(self, entry: AuditLogEntry) -> None:
+        """Append a single JSON line to the local audit log file."""
+        try:
+            with open(_LOCAL_LOG_PATH, "a", encoding="utf-8") as f:
+                f.write(entry.model_dump_json() + "\n")
+            logger.info(
+                "Audit log -> file: flow=%s status=%s principal=%s",
+                entry.flow_name.value, entry.status.value, entry.principal_id,
+            )
+        except Exception as exc:
+            logger.error("Failed to write audit log to file: %s", exc)
