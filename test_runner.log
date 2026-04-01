@@ -1,0 +1,83 @@
+05:24:13  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+05:24:13  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:24:13  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:24:13  INFO      ai_engine.intent_classifier  Classifying intent for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:24:14  INFO      httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+05:24:14  ERROR     ai_engine.orchestrator  Intent classification failed: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:24:14  ERROR     ai_engine.orchestrator  Flow failed at stage before execution. Error: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:24:14  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.FAILED intent=None
+05:24:14  INFO      user_bot.bot  User bot completed. status=FlowStatus.FAILED intent=None
+05:50:52  INFO      ai_engine.intent_classifier  OpenAI client: standard OpenAI API
+05:50:52  INFO      ai_engine.risk_scorer  OpenAI client: standard OpenAI API
+05:50:52  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+05:50:52  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:50:52  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:50:52  INFO      ai_engine.intent_classifier  Classifying intent for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:50:52  INFO      httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+05:50:52  ERROR     ai_engine.orchestrator  Intent classification failed: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:50:52  ERROR     ai_engine.orchestrator  Flow failed at stage before execution. Error: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:50:52  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.FAILED intent=None
+05:50:52  INFO      user_bot.bot  User bot completed. status=FlowStatus.FAILED intent=None
+
+05:57:24  INFO      ai_engine.intent_classifier  OpenAI client: standard OpenAI API
+05:57:24  INFO      ai_engine.risk_scorer  OpenAI client: standard OpenAI API
+05:57:24  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+05:57:24  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:57:24  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:57:24  INFO      ai_engine.intent_classifier  Classifying intent for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+05:57:25  INFO      httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+05:57:25  ERROR     ai_engine.orchestrator  Intent classification failed: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:57:25  ERROR     ai_engine.orchestrator  Flow failed at stage before execution. Error: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+05:57:25  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.FAILED intent=None
+05:57:25  INFO      user_bot.bot  User bot completed. status=FlowStatus.FAILED intent=None
+06:05:38  INFO      ai_engine.intent_classifier  OpenAI client: standard OpenAI API
+06:05:38  INFO      ai_engine.risk_scorer  OpenAI client: standard OpenAI API
+06:05:38  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+06:05:38  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:05:38  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:05:38  INFO      ai_engine.intent_classifier  Classifying intent for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:05:39  INFO      httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+06:05:39  ERROR     ai_engine.orchestrator  Intent classification failed: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+06:05:39  ERROR     ai_engine.orchestrator  Flow failed at stage before execution. Error: LLM call failed during intent classification: Error code: 401 - {'error': {'message': 'Incorrect API key provided: 6QBpiRXe************************************************************************DyZx. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+06:05:39  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.FAILED intent=None
+06:05:39  INFO      user_bot.bot  User bot completed. status=FlowStatus.FAILED intent=None
+
+06:11:18  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:11:18  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:11:18  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+06:11:18  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:11:18  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:11:18  INFO      ai_engine.intent_classifier  Classifying intent for: Onboard new hire IAM Test User in department Engineering as Test Account....
+06:11:20  INFO      httpx  HTTP Request: POST https://kraft-cyber.cognitiveservices.azure.com//openai/deployments/gpt-4.1-mini/chat/completions?api-version=2024-08-01-preview "HTTP/1.1 200 OK"
+06:11:20  INFO      ai_engine.intent_classifier  Intent classified: user_onboarding (confidence=0.95) — The request explicitly mentions onboarding a new user, indicating creation and provisioning in Entra ID.
+06:11:20  INFO      ai_engine.policy_engine  Running policy checks for flow: user_onboarding
+06:11:20  INFO      ai_engine.policy_engine  Policy checks passed for flow: user_onboarding
+06:11:20  INFO      ai_engine.approval_gate  Approval gate: auto-execute approved for flow 'user_onboarding'.
+06:11:20  INFO      ai_engine.orchestrator  Executing flow: user_onboarding
+06:11:20  WARNING   shared.audit.audit_logger  AuditLogger: COSMOS_DB_ENDPOINT not set. Writing audit logs to local file: /home/LabsKraft/.gemini/antigravity/scratch/agentic-iam/audit.jsonl
+06:11:20  INFO      user_bot.flows.onboarding  Starting user onboarding for: iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com
+06:11:20  INFO      shared.graph_client.graph_client  Creating user: iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com
+06:11:20  INFO      msal.authority  Initializing with Entra authority: https://login.microsoftonline.com/5950e39e-81d1-45a1-8618-fe39a39b0448
+06:11:20  INFO      shared.graph_client.auth  Acquired new Graph API token. Expires in 3599s.
+06:11:20  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users "HTTP/1.1 201 Created"
+06:11:20  INFO      shared.graph_client.graph_client  User created with ID: 75c8c47d-5ab4-4ad8-a34c-7d5e8a4fb8b2
+06:11:20  INFO      user_bot.flows.onboarding  User created: iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com (75c8c47d-5ab4-4ad8-a34c-7d5e8a4fb8b2)
+06:11:20  INFO      shared.graph_client.graph_client  Adding user 75c8c47d-5ab4-4ad8-a34c-7d5e8a4fb8b2 to group 12761bce-2c06-4cf0-8820-76342656e1b2
+06:11:21  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/12761bce-2c06-4cf0-8820-76342656e1b2/members/$ref "HTTP/1.1 204 No Content"
+06:11:21  INFO      user_bot.flows.onboarding  Added user to 1 group(s).
+06:11:21  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_onboarding status=completed principal=75c8c47d-5ab4-4ad8-a34c-7d5e8a4fb8b2
+06:11:21  INFO      user_bot.flows.onboarding  User onboarding completed for: iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com
+06:11:21  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.COMPLETED intent=FlowName.USER_ONBOARDING
+06:11:21  INFO      user_bot.bot  User bot completed. status=FlowStatus.COMPLETED intent=FlowName.USER_ONBOARDING
+06:11:21  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: terminate
+06:11:21  INFO      user_bot.bot  User bot received request: Offboard user iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com. Reason: Tes...
+06:11:21  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Offboard user iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com. Reason: Tes...
+06:11:21  INFO      ai_engine.intent_classifier  Classifying intent for: Offboard user iam.testuser@michaelkloudkrafthotmail.onmicrosoft.com. Reason: Tes...
+06:11:23  INFO      httpx  HTTP Request: POST https://kraft-cyber.cognitiveservices.azure.com//openai/deployments/gpt-4.1-mini/chat/completions?api-version=2024-08-01-preview "HTTP/1.1 200 OK"
+06:11:23  INFO      ai_engine.intent_classifier  Intent classified: user_offboarding (confidence=0.95) — The request explicitly mentions offboarding a user and disabling the account after a test run.
+06:11:23  INFO      ai_engine.policy_engine  Running policy checks for flow: user_offboarding
+06:11:23  INFO      ai_engine.policy_engine  Policy checks passed for flow: user_offboarding
+06:11:23  INFO      ai_engine.orchestrator  Approval required: Flow 'user_offboarding' is a destructive operation and always requires explicit human approval before execution.
+06:11:23  INFO      ai_engine.orchestrator  Escalating flow 'FlowName.USER_OFFBOARDING' for human approval: Flow 'user_offboarding' is a destructive operation and always requires explicit human approval before execution.
+06:11:23  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.ESCALATED intent=FlowName.USER_OFFBOARDING
+06:11:23  INFO      user_bot.bot  User bot completed. status=FlowStatus.ESCALATED intent=FlowName.USER_OFFBOARDING

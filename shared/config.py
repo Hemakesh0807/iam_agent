@@ -45,6 +45,10 @@ class Config:
     environment: str
     bot_type: str
 
+    # Local dev only — bypasses approval gate for testing
+    # NEVER set this to true in production
+    skip_approval: bool
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
@@ -61,6 +65,7 @@ class Config:
             servicebus_conn=os.getenv("SERVICE_BUS_CONN", ""),
             environment=os.getenv("ENVIRONMENT", "dev"),
             bot_type=os.getenv("BOT_TYPE", "unknown"),
+            skip_approval=os.getenv("SKIP_APPROVAL", "false").lower() == "true",
         )
 
 
