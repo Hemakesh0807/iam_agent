@@ -126,3 +126,39 @@ class AuditLogEntry(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
     graph_operations: list[str] = Field(default_factory=list)  # Log each API call made
+
+
+class AppType(str, Enum):
+    GALLERY     = "gallery"
+    NON_GALLERY = "non_gallery"
+
+
+class SAMLAppOnboardingRequest(BaseModel):
+    """
+    Request model for SAML SSO application onboarding.
+    Used for both gallery and non-gallery apps.
+    """
+    display_name:        str
+    app_type:            AppType
+    template_id:         str | None = None   # Required for gallery apps only
+    entity_id:           str                 # SAML Entity ID / Identifier URI
+    reply_url:           str                 # ACS URL
+    sign_on_url:         str | None = None   # SP-initiated login URL (optional)
+    owner_id:            str
+    assigned_group_ids:  list[str] = Field(default_factory=list)
+    requested_by:        str
+    source:              str = "csv_bulk"
+
+
+class BulkAppOnboardingResult(BaseModel):
+    """Result for a single app in a bulk CSV run."""
+    row:           int
+    display_name:  str
+    app_type:      str
+    status:        str                  # completed | failed
+    app_id:        str | None = None
+    object_id:     str | None = None
+    sp_id:         str | None = None
+    cert_thumbprint: str | None = None
+    duration_seconds: float = 0.0
+    error:         str | None = None

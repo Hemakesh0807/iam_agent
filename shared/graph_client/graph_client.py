@@ -369,3 +369,136 @@ class GraphClient:
             "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{owner_id}"
         }
         await self._post(f"applications/{object_id}/owners/$ref", payload)
+
+    # =========================================================================
+    # SAML SSO OPERATIONS
+    # =========================================================================
+
+    async def instantiate_gallery_app(
+        self, template_id: str, display_name: str
+    ) -> dict[str, Any]:
+        """
+        POST /applicationTemplates/{id}/instantiate
+        Creates both the app registration and service principal in one call
+        from a Microsoft gallery app template.
+
+        Returns dict with both 'application' and 'servicePrincipal' objects.
+        """
+        logger.info(
+            "Instantiating gallery app: template=%s name='%s'",
+            template_id, display_name,
+        )
+        result = await self._post(
+            f"applicationTemplates/{template_id}/instantiate",
+            {"displayName": display_name},
+        )
+        logger.info(
+            "Gallery app instantiated: appId=%s spId=%s",
+            result.get("application", {}).get("appId"),
+            result.get("servicePrincipal", {}).get("id"),
+        )
+        return result
+
+    async def set_saml_sso_mode(self, sp_id: str) -> None:
+        """
+        PATCH /servicePrincipals/{id}
+        Sets the SSO mode to SAML on the service principal.
+        Must be called before configuring SAML URLs or generating a certificate.
+        """
+        logger.info("Setting SAML SSO mode for SP: %s", sp_id)
+        await self._patch(
+            f"servicePrincipals/{sp_id}",
+            {"preferredSingleSignOnMode": "saml"},
+        )
+
+    async def set_saml_urls(
+        self,
+        object_id: str,
+        sp_id: str,
+        entity_id: str,
+        reply_url: str,
+        sign_on_url: str | None = None,
+    ) -> None:
+        """
+        PATCH /applications/{id}  +  PATCH /servicePrincipals/{id}
+        Sets the SAML basic configuration:
+            - Entity ID (Identifier)   -> identifierUris on app registration
+            - Reply URL (ACS URL)      -> replyUrls on app + web.redirectUris
+            - Sign-on URL (optional)   -> on service principal
+
+        Both the app registration and service principal need to be updated
+        for the config to reflect correctly in the Entra ID portal.
+        """
+        logger.info(
+            "Setting SAML URLs for app objectId=%s entity_id=%s reply_url=%s",
+            object_id, entity_id, reply_url,
+        )
+
+        # Update app registration
+        app_patch: dict[str, Any] = {
+            "identifierUris": [entity_id],
+            "web": {
+                "redirectUris": [reply_url],
+            },
+        }
+        await self._patch(f"applications/{object_id}", app_patch)
+
+        # Update service principal with login URL if provided
+        if sign_on_url:
+            await self._patch(
+                f"servicePrincipals/{sp_id}",
+                {"loginUrl": sign_on_url},
+            )
+
+    async def add_token_signing_certificate(self, sp_id: str) -> dict[str, Any]:
+        """
+        POST /servicePrincipals/{id}/addTokenSigningCertificate
+        Auto-generates a self-signed SAML token signing certificate.
+        Entra ID uses this certificate to sign SAML assertions sent to the SP.
+
+        Returns the certificate object including:
+            - thumbprint   : used to identify the certificate
+            - endDateTime  : certificate expiry (3 years by default)
+            - keyId        : unique ID of the key credential
+        """
+        logger.info("Generating SAML signing certificate for SP: %s", sp_id)
+        result = await self._post(
+            f"servicePrincipals/{sp_id}/addTokenSigningCertificate",
+            {
+                "displayName": "CN=SAML Signing Certificate",
+                "endDateTime": _cert_expiry_date(),
+            },
+        )
+        logger.info(
+            "SAML certificate generated: thumbprint=%s expiry=%s",
+            result.get("thumbprint"), result.get("endDateTime"),
+        )
+        return result
+
+    async def assign_group_to_app(
+        self, sp_id: str, group_id: str
+    ) -> dict[str, Any]:
+        """
+        POST /servicePrincipals/{id}/appRoleAssignments
+        Assigns a group to an enterprise application.
+        Uses the default app role (all zeros UUID) since SAML apps
+        typically don't define custom roles.
+        """
+        logger.info("Assigning group %s to SP %s", group_id, sp_id)
+        payload = {
+            "principalId": group_id,
+            "resourceId":  sp_id,
+            "appRoleId":   "00000000-0000-0000-0000-000000000000",
+        }
+        return await self._post(
+            f"servicePrincipals/{sp_id}/appRoleAssignments", payload
+        )
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _cert_expiry_date() -> str:
+    """Returns an ISO 8601 date string 3 years from now — default cert lifetime."""
+    from datetime import datetime, timezone, timedelta
+    expiry = datetime.now(timezone.utc) + timedelta(days=3 * 365)
+    return expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
