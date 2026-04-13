@@ -168,3 +168,77 @@
 05:18:39  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.COMPLETED intent=FlowName.USER_OFFBOARDING
 05:18:39  INFO      user_bot.bot  User bot completed. status=FlowStatus.COMPLETED intent=FlowName.USER_OFFBOARDING
 
+09:57:23  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+09:57:23  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+09:57:23  WARNING   ai_engine.orchestrator  SKIP_APPROVAL=true — approval gate is DISABLED. All flows will auto-execute. Never use this in production.
+09:57:23  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+09:57:23  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+09:57:23  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+09:57:23  INFO      ai_engine.intent_classifier  Classifying intent for: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+09:57:24  INFO      httpx  HTTP Request: POST https://kraft-cyber.cognitiveservices.azure.com//openai/deployments/gpt-4.1-mini/chat/completions?api-version=2024-08-01-preview "HTTP/1.1 401 PermissionDenied"
+09:57:24  ERROR     ai_engine.orchestrator  Intent classification failed: LLM call failed during intent classification: Error code: 401 - {'error': {'code': '401', 'message': 'Access denied due to invalid subscription key or wrong API endpoint. Make sure to provide a valid key for an active subscription and use a correct regional API endpoint for your resource.'}}
+09:57:24  ERROR     ai_engine.orchestrator  Flow failed: LLM call failed during intent classification: Error code: 401 - {'error': {'code': '401', 'message': 'Access denied due to invalid subscription key or wrong API endpoint. Make sure to provide a valid key for an active subscription and use a correct regional API endpoint for your resource.'}}
+09:57:24  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.FAILED intent=None
+09:57:24  INFO      user_bot.bot  User bot completed. status=FlowStatus.FAILED intent=None
+
+10:22:35  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+10:22:35  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+10:22:35  WARNING   ai_engine.orchestrator  SKIP_APPROVAL=true — approval gate is DISABLED. All flows will auto-execute. Never use this in production.
+10:22:35  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: hire
+10:22:35  INFO      user_bot.bot  User bot received request: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+10:22:35  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+10:22:36  INFO      ai_engine.intent_classifier  Classifying intent for: Onboard new hire IAM Test User02 in department Engineering as Test Account....
+10:22:38  INFO      httpx  HTTP Request: POST https://kraft-cyber.cognitiveservices.azure.com//openai/deployments/gpt-4.1-mini/chat/completions?api-version=2024-08-01-preview "HTTP/1.1 200 OK"
+10:22:38  INFO      ai_engine.intent_classifier  Intent classified: user_onboarding (confidence=0.95) — The request explicitly mentions onboarding a new user with details indicating user creation and provisioning.
+10:22:38  INFO      ai_engine.policy_engine  Running policy checks for flow: user_onboarding
+10:22:38  INFO      ai_engine.policy_engine  Policy checks passed for flow: user_onboarding
+10:22:38  WARNING   ai_engine.orchestrator  SKIP_APPROVAL active — bypassing approval gate for flow 'FlowName.USER_ONBOARDING'.
+10:22:38  INFO      ai_engine.orchestrator  Executing flow: user_onboarding
+10:22:38  WARNING   shared.audit.audit_logger  AuditLogger: COSMOS_DB_ENDPOINT not set. Writing audit logs to local file: /home/LabsKraft/.gemini/antigravity/scratch/agentic-iam/audit.jsonl
+10:22:38  INFO      user_bot.flows.onboarding  Starting user onboarding for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:38  INFO      shared.graph_client.graph_client  Creating user: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:38  INFO      msal.authority  Initializing with Entra authority: https://login.microsoftonline.com/5950e39e-81d1-45a1-8618-fe39a39b0448
+10:22:38  INFO      shared.graph_client.auth  Acquired new Graph API token. Expires in 3599s.
+10:22:38  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users "HTTP/1.1 201 Created"
+10:22:38  INFO      shared.graph_client.graph_client  User created with ID: 6534cbbd-210c-4351-a90f-04167f23210e
+10:22:38  INFO      user_bot.flows.onboarding  User created: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com (6534cbbd-210c-4351-a90f-04167f23210e)
+10:22:38  INFO      shared.graph_client.graph_client  Adding user 6534cbbd-210c-4351-a90f-04167f23210e to group 12761bce-2c06-4cf0-8820-76342656e1b2
+10:22:38  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/12761bce-2c06-4cf0-8820-76342656e1b2/members/$ref "HTTP/1.1 204 No Content"
+10:22:38  INFO      user_bot.flows.onboarding  Added user to 1 group(s).
+10:22:38  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_onboarding status=completed principal=6534cbbd-210c-4351-a90f-04167f23210e
+10:22:38  INFO      user_bot.flows.onboarding  User onboarding completed for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:38  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.COMPLETED intent=FlowName.USER_ONBOARDING
+10:22:38  INFO      user_bot.bot  User bot completed. status=FlowStatus.COMPLETED intent=FlowName.USER_ONBOARDING
+10:22:38  INFO      user_bot.triggers.hr_webhook  HR webhook received event_type: terminate
+10:22:38  INFO      user_bot.bot  User bot received request: Offboard user iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com. Reason: T...
+10:22:38  INFO      ai_engine.orchestrator  IAM orchestrator started for request: Offboard user iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com. Reason: T...
+10:22:38  INFO      ai_engine.intent_classifier  Classifying intent for: Offboard user iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com. Reason: T...
+10:22:39  INFO      httpx  HTTP Request: POST https://kraft-cyber.cognitiveservices.azure.com//openai/deployments/gpt-4.1-mini/chat/completions?api-version=2024-08-01-preview "HTTP/1.1 200 OK"
+10:22:39  INFO      ai_engine.intent_classifier  Intent classified: user_offboarding (confidence=0.95) — The request explicitly mentions offboarding a user with a reason for cleanup, indicating user deprovisioning.
+10:22:39  INFO      ai_engine.policy_engine  Running policy checks for flow: user_offboarding
+10:22:39  INFO      ai_engine.policy_engine  Policy checks passed for flow: user_offboarding
+10:22:39  WARNING   ai_engine.orchestrator  SKIP_APPROVAL active — bypassing approval gate for flow 'FlowName.USER_OFFBOARDING'.
+10:22:40  INFO      ai_engine.orchestrator  Executing flow: user_offboarding
+10:22:40  WARNING   shared.audit.audit_logger  AuditLogger: COSMOS_DB_ENDPOINT not set. Writing audit logs to local file: /home/LabsKraft/.gemini/antigravity/scratch/agentic-iam/audit.jsonl
+10:22:40  INFO      user_bot.flows.offboarding  Starting user offboarding for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:40  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/6534cbbd-210c-4351-a90f-04167f23210e "HTTP/1.1 200 OK"
+10:22:40  WARNING   user_bot.flows.offboarding  User iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com is already disabled. Proceeding to ensure full cleanup.
+10:22:40  INFO      shared.graph_client.graph_client  Disabling user: 6534cbbd-210c-4351-a90f-04167f23210e
+10:22:40  INFO      httpx  HTTP Request: PATCH https://graph.microsoft.com/v1.0/users/6534cbbd-210c-4351-a90f-04167f23210e "HTTP/1.1 204 No Content"
+10:22:40  INFO      user_bot.flows.offboarding  Account disabled: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:40  INFO      shared.graph_client.graph_client  Revoking sessions for user: 6534cbbd-210c-4351-a90f-04167f23210e
+10:22:40  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users/6534cbbd-210c-4351-a90f-04167f23210e/revokeSignInSessions "HTTP/1.1 200 OK"
+10:22:40  INFO      user_bot.flows.offboarding  Sessions revoked for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:40  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/6534cbbd-210c-4351-a90f-04167f23210e/memberOf "HTTP/1.1 200 OK"
+10:22:40  INFO      shared.graph_client.graph_client  Removing user 6534cbbd-210c-4351-a90f-04167f23210e from group 12761bce-2c06-4cf0-8820-76342656e1b2
+10:22:41  INFO      httpx  HTTP Request: DELETE https://graph.microsoft.com/v1.0/groups/12761bce-2c06-4cf0-8820-76342656e1b2/members/6534cbbd-210c-4351-a90f-04167f23210e/$ref "HTTP/1.1 204 No Content"
+10:22:41  INFO      shared.graph_client.graph_client  Removed user 6534cbbd-210c-4351-a90f-04167f23210e from 1 groups.
+10:22:41  INFO      user_bot.flows.offboarding  Removed from 1 group(s): iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:41  INFO      shared.graph_client.graph_client  Removing all licenses from user: 6534cbbd-210c-4351-a90f-04167f23210e
+10:22:41  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/6534cbbd-210c-4351-a90f-04167f23210e?%24select=assignedLicenses "HTTP/1.1 200 OK"
+10:22:41  INFO      user_bot.flows.offboarding  Licenses removed for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:41  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_offboarding status=completed principal=6534cbbd-210c-4351-a90f-04167f23210e
+10:22:41  INFO      user_bot.flows.offboarding  User offboarding completed for: iam.testuser02@michaelkloudkrafthotmail.onmicrosoft.com
+10:22:41  INFO      ai_engine.orchestrator  IAM orchestrator completed. status=FlowStatus.COMPLETED intent=FlowName.USER_OFFBOARDING
+10:22:41  INFO      user_bot.bot  User bot completed. status=FlowStatus.COMPLETED intent=FlowName.USER_OFFBOARDING
+
