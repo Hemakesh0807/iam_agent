@@ -494,6 +494,67 @@ class GraphClient:
             f"servicePrincipals/{sp_id}/appRoleAssignments", payload
         )
 
+    # =========================================================================
+    # RESOLVER METHODS — groups and licenses
+    # =========================================================================
+
+    async def list_groups(self) -> list[dict]:
+        """
+        GET /groups?$select=id,displayName&$orderby=displayName
+        Returns all security and M365 groups in the tenant.
+        Used to populate group dropdowns in the Streamlit UI.
+        """
+        result = await self._get(
+            "groups",
+            params={
+                "$select": "id,displayName",
+                # "$orderby": "displayName",
+                "$top": "999",
+            },
+        )
+        return result.get("value", [])
+
+    async def get_group_by_name(self, name: str) -> dict | None:
+        """
+        GET /groups?$filter=displayName eq '{name}'
+        Resolves a group display name to its object ID.
+        Returns the group dict or None if not found.
+        """
+        result = await self._get(
+            "groups",
+            params={
+                "$filter": f"displayName eq '{name}'",
+                "$select": "id,displayName",
+            },
+        )
+        groups = result.get("value", [])
+        return groups[0] if groups else None
+
+    async def list_licenses(self) -> list[dict]:
+        """
+        GET /subscribedSkus
+        Returns all licenses subscribed to in the tenant with
+        consumed and available seat counts.
+        Used to populate license dropdowns in the Streamlit UI.
+        """
+        result = await self._get(
+            "subscribedSkus",
+            params={"$select": "skuId,skuPartNumber,consumedUnits,prepaidUnits"},
+        )
+        return result.get("value", [])
+
+    async def get_license_sku_by_name(self, sku_part_number: str) -> dict | None:
+        """
+        Resolves a license SKU part number (e.g. 'SPE_E3') to its full
+        license object including skuId.
+        Returns the license dict or None if not found.
+        """
+        licenses = await self.list_licenses()
+        for lic in licenses:
+            if lic.get("skuPartNumber", "").upper() == sku_part_number.upper():
+                return lic
+        return None
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -502,3 +563,4 @@ def _cert_expiry_date() -> str:
     from datetime import datetime, timezone, timedelta
     expiry = datetime.now(timezone.utc) + timedelta(days=3 * 365)
     return expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
+
