@@ -52,9 +52,9 @@ TEST_GROUP_ID = os.getenv("TEST_GROUP_ID", "")
 
 # Test user details — these will be created and then deleted
 TEST_USER = {
-    "display_name":         "IAM Test User03",
-    "mail_nickname":        "iam.testuser03",
-    "user_principal_name":  f"iam.testuser02@{TENANT_DOMAIN}",
+    "display_name":         "IAM Test User09",
+    "mail_nickname":        "iam.testuser09",
+    "user_principal_name":  f"iam.testuser09@{TENANT_DOMAIN}",
     "department":           "Engineering",
     "job_title":            "Test Account",
 }

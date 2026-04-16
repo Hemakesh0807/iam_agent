@@ -554,6 +554,17 @@ class GraphClient:
             if lic.get("skuPartNumber", "").upper() == sku_part_number.upper():
                 return lic
         return None
+    
+    # Used in user_management.py (offboarding)
+    async def get_user_by_upn(self, upn: str) -> dict | None:
+        """
+        GET /users/{upn}
+        Fetch user by UPN and return full user object.
+        """
+        try:
+            return await self._get(f"users/{upn}")
+        except Exception:
+            return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -165,6 +165,71 @@ with tab1:
                     st.error(f"Unexpected error: {exc}")
 
 
+# # ════════════════════════════════════════════════════════════════════════════
+# # TAB 2 — Offboard User (Flow B)
+# # ════════════════════════════════════════════════════════════════════════════
+# with tab2:
+#     st.subheader("Offboard an existing user")
+
+#     with st.form("offboard_form"):
+#         off_user_id = st.text_input(
+#             "User object ID *",
+#             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+#         )
+#         off_upn = st.text_input(
+#             "User Principal Name *",
+#             placeholder="jane@yourdomain.com",
+#         )
+#         off_reason = st.text_area(
+#             "Reason *",
+#             placeholder="Employee resigned — last day 30 June 2025",
+#         )
+#         off_submitted = st.form_submit_button("🗑 Offboard User", type="primary")
+
+#     if off_submitted:
+#         errors = []
+#         if not off_user_id: errors.append("User object ID is required.")
+#         if not off_upn:     errors.append("UPN is required.")
+#         if not off_reason or len(off_reason.strip()) < 5:
+#             errors.append("Reason must be at least 5 characters.")
+
+#         if errors:
+#             for err in errors:
+#                 st.error(err)
+#         else:
+#             from user_bot.triggers.admin_portal import handle_admin_request
+#             with st.spinner("Running offboarding flow..."):
+#                 try:
+#                     state = asyncio.run(handle_admin_request({
+#                         "action": "offboard_user",
+#                         "requested_by": "streamlit_admin",
+#                         "payload": {
+#                             "user_id":              off_user_id,
+#                             "user_principal_name":  off_upn,
+#                             "reason":               off_reason,
+#                             "revoke_sessions":      True,
+#                             "remove_licenses":      True,
+#                             "remove_group_memberships": True,
+#                         },
+#                     }))
+
+#                     status = state.get("status")
+#                     if status == "completed":
+#                         st.success("✅ User offboarded successfully.")
+#                         st.json(state.get("result", {}))
+#                     elif status == "escalated":
+#                         st.warning(
+#                             "⏳ Offboarding escalated for admin approval. "
+#                             "Check the Approvals page."
+#                         )
+#                     else:
+#                         st.error(f"Flow ended with status: {status}")
+#                         if state.get("error"):
+#                             st.exception(state["error"])
+#                 except Exception as exc:
+#                     st.error(f"Unexpected error: {exc}")
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Offboard User (Flow B)
 # ════════════════════════════════════════════════════════════════════════════
@@ -172,62 +237,85 @@ with tab2:
     st.subheader("Offboard an existing user")
 
     with st.form("offboard_form"):
-        off_user_id = st.text_input(
-            "User object ID *",
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        )
         off_upn = st.text_input(
             "User Principal Name *",
             placeholder="jane@yourdomain.com",
         )
+
         off_reason = st.text_area(
             "Reason *",
             placeholder="Employee resigned — last day 30 June 2025",
         )
+
         off_submitted = st.form_submit_button("🗑 Offboard User", type="primary")
 
     if off_submitted:
         errors = []
-        if not off_user_id: errors.append("User object ID is required.")
-        if not off_upn:     errors.append("UPN is required.")
+
+        if not off_upn:
+            errors.append("UPN is required.")
+
         if not off_reason or len(off_reason.strip()) < 5:
             errors.append("Reason must be at least 5 characters.")
 
         if errors:
             for err in errors:
                 st.error(err)
+
         else:
             from user_bot.triggers.admin_portal import handle_admin_request
-            with st.spinner("Running offboarding flow..."):
+
+            with st.spinner("Resolving user and running offboarding flow..."):
                 try:
+                    # 🔥 Step 1: Resolve user from UPN
+                    user = asyncio.run(client.get_user_by_upn(off_upn))
+
+                    if not user:
+                        st.error("❌ No user found with this UPN.")
+                        st.stop()
+
+                    user_id = user["id"]
+
+                    # ✅ Optional: Show confirmation
+                    st.info(
+                        f"User found: {user.get('displayName')} "
+                        f"({user.get('userPrincipalName')})"
+                    )
+
+                    # 🔥 Step 2: Send payload
                     state = asyncio.run(handle_admin_request({
                         "action": "offboard_user",
                         "requested_by": "streamlit_admin",
                         "payload": {
-                            "user_id":              off_user_id,
-                            "user_principal_name":  off_upn,
-                            "reason":               off_reason,
-                            "revoke_sessions":      True,
-                            "remove_licenses":      True,
+                            "user_id": user_id,
+                            "user_principal_name": off_upn,
+                            "reason": off_reason,
+                            "revoke_sessions": True,
+                            "remove_licenses": True,
                             "remove_group_memberships": True,
                         },
                     }))
 
                     status = state.get("status")
+
                     if status == "completed":
                         st.success("✅ User offboarded successfully.")
                         st.json(state.get("result", {}))
+
                     elif status == "escalated":
                         st.warning(
                             "⏳ Offboarding escalated for admin approval. "
                             "Check the Approvals page."
                         )
+
                     else:
                         st.error(f"Flow ended with status: {status}")
                         if state.get("error"):
                             st.exception(state["error"])
+
                 except Exception as exc:
                     st.error(f"Unexpected error: {exc}")
+
 
 
 # ════════════════════════════════════════════════════════════════════════════
