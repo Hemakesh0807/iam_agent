@@ -33,80 +33,114 @@ class RiskSeverity(str, Enum):
     HIGH   = "high"
 
 
+class AppType(str, Enum):
+    GALLERY     = "gallery"
+    NON_GALLERY = "non_gallery"
+
+
 # ── User Models ───────────────────────────────────────────────────────────────
 
 class UserOnboardingRequest(BaseModel):
-    display_name: str
-    mail_nickname: str
-    user_principal_name: str
-    department: str
-    job_title: str
-    manager_id: str | None = None
-    group_ids: list[str] = Field(default_factory=list)
-    license_sku_id: str | None = None
-    app_role_assignments: list[dict[str, str]] = Field(default_factory=list)
-    requested_by: str
-    source: str = "hr_system"   # hr_system | admin_portal | ad_sync | bulk_import
+    display_name:          str
+    mail_nickname:         str
+    user_principal_name:   str
+    department:            str
+    job_title:             str
+    # usage_location is required by Entra ID before a license can be assigned.
+    # Must be a valid ISO 3166-1 alpha-2 country code e.g. "US", "IN", "GB".
+    usage_location:        str = "US"
+    manager_id:            str | None = None
+    group_ids:             list[str] = Field(default_factory=list)
+    license_sku_id:        str | None = None
+    app_role_assignments:  list[dict[str, str]] = Field(default_factory=list)
+    requested_by:          str
+    source:                str = "hr_system"
 
 
 class UserOffboardingRequest(BaseModel):
-    user_id: str                # Entra ID object ID
-    user_principal_name: str
-    requested_by: str
-    reason: str
-    revoke_sessions: bool = True
-    remove_licenses: bool = True
+    user_id:                  str
+    user_principal_name:      str
+    requested_by:             str
+    reason:                   str
+    revoke_sessions:          bool = True
+    remove_licenses:          bool = True
     remove_group_memberships: bool = True
-    backup_manager_id: str | None = None   # Reassign direct reports to this manager
+    backup_manager_id:        str | None = None
 
 
 class RiskIsolationRequest(BaseModel):
-    user_id: str
-    user_principal_name: str
-    alert_id: str
-    severity: RiskSeverity
-    alert_reason: str
+    user_id:              str
+    user_principal_name:  str
+    alert_id:             str
+    severity:             RiskSeverity
+    alert_reason:         str
     sentinel_incident_id: str | None = None
-    auto_isolate: bool = True  # False triggers escalation instead
+    auto_isolate:         bool = True
 
 
 # ── App Models ────────────────────────────────────────────────────────────────
 
 class AppOnboardingRequest(BaseModel):
-    display_name: str
-    owner_id: str              # Entra ID object ID of the app owner
+    display_name:    str
+    owner_id:        str
     requested_scopes: list[str]
-    redirect_uris: list[str] = Field(default_factory=list)
-    description: str | None = None
-    requested_by: str
+    redirect_uris:   list[str] = Field(default_factory=list)
+    description:     str | None = None
+    requested_by:    str
 
 
 class AppOffboardingRequest(BaseModel):
-    app_id: str                # Entra ID application ID (client ID)
-    object_id: str             # Entra ID application object ID
-    service_principal_id: str
-    requested_by: str
-    reason: str
+    app_id:                 str
+    object_id:              str
+    service_principal_id:   str
+    requested_by:           str
+    reason:                 str
     revoke_user_assignments: bool = True
+
+
+class SAMLAppOnboardingRequest(BaseModel):
+    display_name:        str
+    app_type:            AppType
+    template_id:         str | None = None
+    entity_id:           str
+    reply_url:           str
+    sign_on_url:         str | None = None
+    owner_id:            str
+    assigned_group_ids:  list[str] = Field(default_factory=list)
+    requested_by:        str
+    source:              str = "csv_bulk"
+
+
+class BulkAppOnboardingResult(BaseModel):
+    row:              int
+    display_name:     str
+    app_type:         str
+    status:           str
+    app_id:           str | None = None
+    object_id:        str | None = None
+    sp_id:            str | None = None
+    cert_thumbprint:  str | None = None
+    duration_seconds: float = 0.0
+    error:            str | None = None
 
 
 # ── Graph API Response Models ─────────────────────────────────────────────────
 
 class GraphUser(BaseModel):
-    id: str
-    display_name: str = Field(alias="displayName")
-    user_principal_name: str = Field(alias="userPrincipalName")
-    account_enabled: bool = Field(alias="accountEnabled")
-    department: str | None = None
-    job_title: str | None = Field(None, alias="jobTitle")
+    id:                   str
+    display_name:         str = Field(alias="displayName")
+    user_principal_name:  str = Field(alias="userPrincipalName")
+    account_enabled:      bool = Field(alias="accountEnabled")
+    department:           str | None = None
+    job_title:            str | None = Field(None, alias="jobTitle")
 
     class Config:
         populate_by_name = True
 
 
 class GraphApplication(BaseModel):
-    id: str
-    app_id: str = Field(alias="appId")
+    id:           str
+    app_id:       str = Field(alias="appId")
     display_name: str = Field(alias="displayName")
 
     class Config:
@@ -116,49 +150,35 @@ class GraphApplication(BaseModel):
 # ── Audit Log Entry ───────────────────────────────────────────────────────────
 
 class AuditLogEntry(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    bot_type: str                           # Cosmos partition key
-    flow_name: FlowName
-    status: FlowStatus
-    principal_id: str                       # User or app object ID acted upon
-    requested_by: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    details: dict[str, Any] = Field(default_factory=dict)
-    error: str | None = None
-    graph_operations: list[str] = Field(default_factory=list)  # Log each API call made
+    id:               str = Field(default_factory=lambda: str(uuid4()))
+    bot_type:         str
+    flow_name:        FlowName
+    status:           FlowStatus
+    principal_id:     str
+    requested_by:     str
+    timestamp:        datetime = Field(default_factory=datetime.utcnow)
+    details:          dict[str, Any] = Field(default_factory=dict)
+    error:            str | None = None
+    graph_operations: list[str] = Field(default_factory=list)
 
 
-class AppType(str, Enum):
-    GALLERY     = "gallery"
-    NON_GALLERY = "non_gallery"
+# ── AI Assistant Models ───────────────────────────────────────────────────────
+
+class AssistantAction(str, Enum):
+    ONBOARD_USER        = "onboard_user"
+    OFFBOARD_USER       = "offboard_user"
+    ISOLATE_USER        = "isolate_user"
+    ADD_TO_GROUP        = "add_to_group"
+    REMOVE_FROM_GROUP   = "remove_from_group"
+    ASSIGN_LICENSE      = "assign_license"
+    REMOVE_LICENSE      = "remove_license"
+    UNKNOWN             = "unknown"
 
 
-class SAMLAppOnboardingRequest(BaseModel):
-    """
-    Request model for SAML SSO application onboarding.
-    Used for both gallery and non-gallery apps.
-    """
-    display_name:        str
-    app_type:            AppType
-    template_id:         str | None = None   # Required for gallery apps only
-    entity_id:           str                 # SAML Entity ID / Identifier URI
-    reply_url:           str                 # ACS URL
-    sign_on_url:         str | None = None   # SP-initiated login URL (optional)
-    owner_id:            str
-    assigned_group_ids:  list[str] = Field(default_factory=list)
-    requested_by:        str
-    source:              str = "csv_bulk"
-
-
-class BulkAppOnboardingResult(BaseModel):
-    """Result for a single app in a bulk CSV run."""
-    row:           int
-    display_name:  str
-    app_type:      str
-    status:        str                  # completed | failed
-    app_id:        str | None = None
-    object_id:     str | None = None
-    sp_id:         str | None = None
-    cert_thumbprint: str | None = None
-    duration_seconds: float = 0.0
-    error:         str | None = None
+class AssistantParseResult(BaseModel):
+    """Result of the AI assistant parsing a free-text IAM instruction."""
+    action:          AssistantAction
+    confidence:      float
+    extracted:       dict[str, Any] = Field(default_factory=dict)
+    missing_required: list[str]     = Field(default_factory=list)
+    reasoning:       str            = ""

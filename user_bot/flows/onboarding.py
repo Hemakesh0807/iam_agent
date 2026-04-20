@@ -39,6 +39,7 @@ async def run_user_onboarding(request: UserOnboardingRequest) -> dict:
         user_payload = {
             "accountEnabled": True,
             "displayName": request.display_name,
+            "usageLocation": request.usage_location,
             "mailNickname": request.mail_nickname,
             "userPrincipalName": request.user_principal_name,
             "department": request.department,

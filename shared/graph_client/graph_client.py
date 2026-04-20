@@ -494,6 +494,7 @@ class GraphClient:
             f"servicePrincipals/{sp_id}/appRoleAssignments", payload
         )
 
+
     # =========================================================================
     # RESOLVER METHODS — groups and licenses
     # =========================================================================
@@ -554,17 +555,62 @@ class GraphClient:
             if lic.get("skuPartNumber", "").upper() == sku_part_number.upper():
                 return lic
         return None
+
+    async def get_user_by_upn(self, upn: str) -> dict[str, Any]:
+        """
+        GET /users/{userPrincipalName}
+        Fetch a user by their UPN — useful when only the UPN is known.
+        Returns the user object including id, displayName, assignedLicenses.
+        """
+        return await self._get(
+            f"users/{upn}",
+            params={"$select": "id,displayName,userPrincipalName,accountEnabled,assignedLicenses,department,jobTitle"},
+        )
+
+    async def get_user_licenses(self, user_id: str) -> list[dict]:
+        """
+        GET /users/{id}?$select=assignedLicenses
+        Returns the list of license objects assigned to the user.
+        Each object contains skuId which can be matched against subscribedSkus.
+        """
+        result = await self._get(
+            f"users/{user_id}",
+            params={"$select": "assignedLicenses"},
+        )
+        return result.get("assignedLicenses", [])
+
+    async def remove_license(self, user_id: str, sku_id: str) -> None:
+        """
+        POST /users/{id}/assignLicense
+        Removes a specific license from the user by SKU ID.
+        Unlike remove_all_licenses(), this targets a single SKU.
+        """
+        logger.info("Removing license %s from user %s", sku_id, user_id)
+        await self._post(f"users/{user_id}/assignLicense", {
+            "addLicenses":    [],
+            "removeLicenses": [sku_id],
+        })
     
-    # Used in user_management.py (offboarding)
-    async def get_user_by_upn(self, upn: str) -> dict | None:
+    async def set_usage_location(self, user_id: str, country_code: str) -> None:
         """
-        GET /users/{upn}
-        Fetch user by UPN and return full user object.
+        PATCH /users/{id}
+        Sets the usageLocation on a user — required before any license can be assigned.
+        country_code must be a valid ISO 3166-1 alpha-2 code e.g. 'US', 'IN', 'GB'.
         """
-        try:
-            return await self._get(f"users/{upn}")
-        except Exception:
-            return None
+        logger.info("Setting usageLocation=%s for user %s", country_code, user_id)
+        await self._patch(f"users/{user_id}", {"usageLocation": country_code})
+ 
+    async def get_usage_location(self, user_id: str) -> str | None:
+        """
+        GET /users/{id}?$select=usageLocation
+        Returns the current usageLocation of the user, or None if not set.
+        """
+        result = await self._get(
+            f"users/{user_id}",
+            params={"$select": "usageLocation"},
+        )
+        return result.get("usageLocation") or None
+ 
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -574,4 +620,3 @@ def _cert_expiry_date() -> str:
     from datetime import datetime, timezone, timedelta
     expiry = datetime.now(timezone.utc) + timedelta(days=3 * 365)
     return expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
-
