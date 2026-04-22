@@ -50,7 +50,8 @@ col2.page_link("pages/2_user_management.py",  label="👤 User Management", icon
 col3.page_link("pages/3_app_management.py",   label="🖥 App Management",  icon="🖥️")
 col4.page_link("pages/4_bulk_csv.py",         label="📂 Bulk CSV",        icon="📂")
 
-col5, col6, col7, _ = st.columns(4)
+col5, col6, col7, col8 = st.columns(4)
 col5.page_link("pages/5_approvals.py",        label="✅ Approvals",       icon="✅")
 col6.page_link("pages/6_audit_log.py",        label="📋 Audit Log",       icon="📋")
 col7.page_link("pages/7_settings.py",         label="⚙️ Settings",        icon="⚙️")
+col8.page_link("pages/8_ai_assistant.py",     label="🤖 AI Assistant",        icon="🤖")

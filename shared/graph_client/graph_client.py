@@ -611,6 +611,97 @@ class GraphClient:
         )
         return result.get("usageLocation") or None
  
+    # =========================================================================
+    # SEARCH METHODS
+    # =========================================================================
+ 
+ 
+    async def get_service_principal_by_app_id(self, app_id: str) -> dict | None:
+        """
+        GET /servicePrincipals?$filter=appId eq '{app_id}'
+        Resolves an application's appId to its service principal object ID.
+        Returns the service principal dict or None if not found.
+        """
+        result = await self._get(
+            "servicePrincipals",
+            params={
+                "$filter": f"appId eq '{app_id}'",
+                "$select": "id,appId,displayName",
+            },
+        )
+        sps = result.get("value", [])
+        return sps[0] if sps else None
+ 
+    async def search_users(self, query: str) -> list[dict]:
+        """
+        GET /users?$search="displayName:{query}" OR startsWith(userPrincipalName)
+        Searches users by display name or UPN prefix.
+        Returns list of {id, displayName, userPrincipalName}.
+        Requires ConsistencyLevel: eventual header (already set in _headers()).
+        """
+        if not query or len(query.strip()) < 2:
+            return []
+        result = await self._get(
+            "users",
+            params={
+                "$search":  f'"displayName:{query}" OR "userPrincipalName:{query}"',
+                "$select":  "id,displayName,userPrincipalName",
+                "$top":     "15",
+                # "$orderby": "displayName",
+            },
+        )
+        return result.get("value", [])
+ 
+    async def search_applications(self, query: str) -> list[dict]:
+        """
+        GET /applications?$search="displayName:{query}"
+        Searches app registrations by display name, then resolves the
+        service principal ID for each result.
+        Returns list of {object_id, app_id, display_name, service_principal_id}.
+        """
+        if not query or len(query.strip()) < 2:
+            return []
+ 
+        result = await self._get(
+            "applications",
+            params={
+                "$search": f'"displayName:{query}"',
+                "$select": "id,appId,displayName",
+                "$top":    "15",
+            },
+        )
+        apps = result.get("value", [])
+ 
+        resolved = []
+        for app in apps:
+            sp_id = await self._resolve_sp_id(app["appId"])
+            resolved.append({
+                "object_id":            app["id"],
+                "app_id":               app["appId"],
+                "display_name":         app["displayName"],
+                "service_principal_id": sp_id or "",
+            })
+        return resolved
+ 
+    async def _resolve_sp_id(self, app_id: str) -> str | None:
+        """
+        GET /servicePrincipals?$filter=appId eq '{app_id}'
+        Resolves an application's appId to its service principal object ID.
+        Returns the SP object ID or None if not found.
+        """
+        try:
+            result = await self._get(
+                "servicePrincipals",
+                params={
+                    "$filter": f"appId eq '{app_id}'",
+                    "$select": "id",
+                },
+            )
+            sps = result.get("value", [])
+            return sps[0]["id"] if sps else None
+        except Exception:
+            return None
+ 
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
