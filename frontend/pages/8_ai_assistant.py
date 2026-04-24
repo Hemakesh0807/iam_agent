@@ -1,7 +1,7 @@
 """
 Page 8 — AI Assistant
-Natural language IAM management. Type any instruction and the AI will
-parse it, identify missing parameters, prompt for them, and execute.
+Natural language IAM management. Type any instruction, the AI extracts
+parameters, prompts for anything missing, confirms, then executes.
 """
 import asyncio
 import sys
@@ -19,89 +19,113 @@ st.set_page_config(
 st.title("🤖 AI Assistant")
 st.caption(
     "Type any IAM instruction in plain English. "
-    "The AI will extract the parameters, ask for anything missing, and execute."
+    "The AI extracts parameters, asks for anything missing, confirms, then executes."
 )
 
 assistant = IAMAssistant()
 
-# ── Example instructions ──────────────────────────────────────────────────────
+# ── Country codes for usage_location prompt ───────────────────────────────────
+COUNTRY_CODES = {
+    "India (IN)":          "IN",
+    "United States (US)":  "US",
+    "United Kingdom (GB)": "GB",
+    "Australia (AU)":      "AU",
+    "Canada (CA)":         "CA",
+    "Germany (DE)":        "DE",
+    "France (FR)":         "FR",
+    "Singapore (SG)":      "SG",
+    "UAE (AE)":            "AE",
+    "Japan (JP)":          "JP",
+}
+
+# ── Examples ──────────────────────────────────────────────────────────────────
 with st.expander("💡 Example instructions", expanded=False):
     st.markdown("""
-**User onboarding / offboarding**
-- *Onboard Jane Doe as a Software Engineer in the Engineering department, her UPN is janedoe@company.com*
-- *Offboard john.smith@company.com — he resigned, last day was Friday*
-- *Isolate user jane@company.com, we detected impossible travel, high severity*
+**Onboarding**
+- *Onboard Jane Doe as a Software Engineer in Engineering, UPN: jane@company.com, based in India*
+- *Create account for John Smith, department: Finance, job title: Analyst, UPN: john@company.com, location: US*
 
-**Group management**
+**Offboarding / Isolation**
+- *Offboard john@company.com — he resigned last Friday*
+- *Isolate jane@company.com, impossible travel detected, high severity*
+
+**Group & license management**
 - *Add jane@company.com to the DevOps team group*
 - *Remove john@company.com from the Finance group*
-- *Remove jane@company.com from all groups*
-
-**License management**
 - *Assign Microsoft 365 E3 license to jane@company.com*
-- *Remove the SPE_E3 license from john@company.com*
-- *Remove all licenses from the terminated user john@company.com*
+- *Remove all licenses from john@company.com*
     """)
 
 st.divider()
 
-# ── Instruction input ─────────────────────────────────────────────────────────
-instruction = st.text_area(
-    "Your instruction",
-    placeholder="e.g. Onboard Jane Doe as a Software Engineer in Engineering, her UPN is janedoe@company.com",
-    height=100,
-    key="ai_instruction",
-)
+# ═══════════════════════════════════════════════════════════════════════════════
+# State machine:
+#   stage = "input"      → show instruction textbox
+#   stage = "parsed"     → show extracted params
+#   stage = "filling"    → show missing params form
+#   stage = "confirm"    → show confirmation before execute
+#   stage = "done"       → show result
+# ═══════════════════════════════════════════════════════════════════════════════
 
-parse_clicked = st.button("🔍 Parse instruction", type="primary", disabled=not instruction.strip())
+if "stage" not in st.session_state:
+    st.session_state["stage"] = "input"
 
-# ── Reset state on new instruction ───────────────────────────────────────────
-if "last_instruction" not in st.session_state:
-    st.session_state["last_instruction"] = ""
 
-if instruction.strip() != st.session_state["last_instruction"]:
-    # Instruction changed — clear previous parse result
-    for key in ["parse_result", "missing_inputs", "confirmed"]:
-        st.session_state.pop(key, None)
-    st.session_state["last_instruction"] = instruction.strip()
+def _reset():
+    for k in ["stage", "parse_result", "missing_values", "final_params", "exec_result"]:
+        st.session_state.pop(k, None)
+    st.rerun()
 
-# ── Parse ─────────────────────────────────────────────────────────────────────
-if parse_clicked and instruction.strip():
-    with st.spinner("Analysing instruction..."):
-        result = asyncio.run(assistant.parse(instruction.strip()))
-        st.session_state["parse_result"] = result
-        st.session_state.pop("missing_inputs", None)
-        st.session_state.pop("confirmed", None)
 
-# ── Show parse result ─────────────────────────────────────────────────────────
-if "parse_result" in st.session_state:
+# ── STAGE: input ──────────────────────────────────────────────────────────────
+if st.session_state["stage"] == "input":
+
+    instruction = st.text_area(
+        "Your instruction",
+        placeholder="e.g. Onboard Jane Doe as a Software Engineer in Engineering, UPN: jane@company.com, based in India",
+        height=110,
+        key="ai_instruction_input",
+    )
+
+    if st.button("🔍 Parse instruction", type="primary", disabled=not (instruction or "").strip()):
+        with st.spinner("Analysing instruction..."):
+            result = asyncio.run(assistant.parse(instruction.strip()))
+            st.session_state["parse_result"] = result
+            st.session_state["stage"] = "parsed"
+            st.rerun()
+
+
+# ── STAGE: parsed ─────────────────────────────────────────────────────────────
+elif st.session_state["stage"] == "parsed":
     result = st.session_state["parse_result"]
 
-    st.divider()
-    st.subheader("Parsed instruction")
+    # Show original instruction for context
+    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
 
     # Unknown action
     if result.action == AssistantAction.UNKNOWN:
         st.error(
-            "❓ Could not identify a supported IAM action from your instruction. "
+            "❓ Could not identify a supported IAM action. "
             "Please rephrase or check the examples above."
         )
         st.caption(f"Reasoning: {result.reasoning}")
+        if st.button("🔄 Try again"):
+            _reset()
         st.stop()
 
-    # Low confidence warning
+    # Low confidence
     if result.confidence < 0.65:
         st.warning(
-            f"⚠ Low confidence ({result.confidence:.0%}) — please verify the "
-            "parsed parameters below before confirming.",
+            f"⚠ Low confidence ({result.confidence:.0%}) — please review the extracted "
+            "parameters carefully before proceeding.",
             icon="⚠️",
         )
 
-    # Action + confidence
-    col_a, col_b, col_c = st.columns(3)
+    # Action summary
+    col_a, col_b = st.columns([1, 3])
     col_a.metric("Action",     result.action.value.replace("_", " ").title())
     col_b.metric("Confidence", f"{result.confidence:.0%}")
-    col_c.caption(f"*{result.reasoning}*")
+    st.caption(f"*{result.reasoning}*")
 
     # Extracted parameters
     if result.extracted:
@@ -109,118 +133,176 @@ if "parse_result" in st.session_state:
         for k, v in result.extracted.items():
             st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
 
-    # ── Missing parameters form ───────────────────────────────────────────────
+    # Missing parameters
     if result.missing_required:
         st.warning(
-            f"The following required parameters are missing: "
-            f"**{', '.join(result.missing_required)}**",
+            f"Missing required parameters: **{', '.join(p.replace('_', ' ') for p in result.missing_required)}**",
             icon="⚠️",
         )
-        st.markdown("**Please provide the missing information:**")
+        col1, col2 = st.columns([1, 5])
+        if col1.button("➡ Provide missing info", type="primary"):
+            st.session_state["stage"] = "filling"
+            st.rerun()
+        if col2.button("✖ Cancel"):
+            _reset()
+    else:
+        # All params present — go straight to confirm
+        st.success("✅ All required parameters extracted. Ready to execute.")
+        col1, col2 = st.columns([1, 5])
+        if col1.button("➡ Review & confirm", type="primary"):
+            st.session_state["final_params"] = dict(result.extracted)
+            st.session_state["stage"] = "confirm"
+            st.rerun()
+        if col2.button("✖ Cancel"):
+            _reset()
 
-        with st.form("missing_params_form"):
-            missing_values: dict[str, str] = {}
-            for param in result.missing_required:
-                label = get_param_label(param)
 
-                # Special handling for specific fields
-                if param == "severity":
-                    missing_values[param] = st.selectbox(
-                        label, options=["high", "medium", "low"]
-                    )
-                elif param == "usage_location":
-                    loc_options = {
-                        "India (IN)": "IN", "United States (US)": "US",
-                        "United Kingdom (GB)": "GB", "Australia (AU)": "AU",
-                        "Canada (CA)": "CA",
-                    }
-                    sel = st.selectbox(label, options=list(loc_options.keys()))
-                    missing_values[param] = loc_options[sel]
-                elif "reason" in param:
-                    missing_values[param] = st.text_area(label, placeholder="Enter reason...")
-                else:
-                    missing_values[param] = st.text_input(label, placeholder=f"Enter {param}...")
+# ── STAGE: filling ────────────────────────────────────────────────────────────
+elif st.session_state["stage"] == "filling":
+    result = st.session_state["parse_result"]
 
-            fill_submitted = st.form_submit_button("✅ Continue with these values")
-
-        if fill_submitted:
-            # Validate all missing fields are now filled
-            still_missing = [p for p, v in missing_values.items() if not v.strip()]
-            if still_missing:
-                st.error(f"Still missing: {', '.join(still_missing)}")
-            else:
-                st.session_state["missing_inputs"] = missing_values
-
-    # If no missing params or all filled — show confirmation
-    all_missing_filled = (
-        not result.missing_required
-        or "missing_inputs" in st.session_state
+    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
+    st.subheader("Provide missing parameters")
+    st.caption(
+        f"Action: **{result.action.value.replace('_', ' ').title()}** — "
+        f"please fill in the fields below."
     )
 
-    if all_missing_filled and "confirmed" not in st.session_state:
-        extra = st.session_state.get("missing_inputs", {})
-        all_params = {**result.extracted, **extra}
+    # Show already extracted params as read-only reference
+    if result.extracted:
+        with st.expander("Already extracted", expanded=False):
+            for k, v in result.extracted.items():
+                st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
 
-        st.divider()
-        st.subheader("Confirm action")
-        st.info(
-            f"The following action will be executed: "
-            f"**{result.action.value.replace('_', ' ').upper()}**",
-            icon="🔐",
-        )
+    # Dynamic form for missing fields
+    missing_values: dict = {}
+    with st.form("missing_params_form"):
+        for param in result.missing_required:
+            label = get_param_label(param)
 
-        st.markdown("**Final parameters:**")
-        for k, v in all_params.items():
+            if param == "usage_location":
+                sel = st.selectbox(
+                    f"{label} *",
+                    options=list(COUNTRY_CODES.keys()),
+                    help="Required by Entra ID before a license can be assigned to the user.",
+                )
+                missing_values[param] = COUNTRY_CODES[sel]
+
+            elif param == "severity":
+                missing_values[param] = st.selectbox(
+                    f"{label} *", options=["high", "medium", "low"]
+                )
+
+            elif "reason" in param or "alert_reason" in param:
+                missing_values[param] = st.text_area(
+                    f"{label} *", placeholder="Enter reason..."
+                )
+
+            else:
+                missing_values[param] = st.text_input(
+                    f"{label} *",
+                    placeholder=f"Enter {param.replace('_', ' ')}...",
+                )
+
+        filled = st.form_submit_button("✅ Continue", type="primary")
+
+    if filled:
+        # Validate all required fields are now filled.
+        # Selectbox fields (usage_location, severity) always have a value
+        # since Streamlit pre-selects the first option — no special handling needed.
+        still_missing = [
+            p for p in result.missing_required
+            if not missing_values.get(p)
+            or (isinstance(missing_values.get(p), str) and not missing_values[p].strip())
+        ]
+        if still_missing:
+            for p in still_missing:
+                st.error(f"'{get_param_label(p)}' is still required.")
+        else:
+            # Merge extracted + filled
+            final = {**result.extracted, **missing_values}
+            st.session_state["missing_values"] = missing_values
+            st.session_state["final_params"]   = final
+            st.session_state["stage"]          = "confirm"
+            st.rerun()
+
+    if st.button("← Back"):
+        st.session_state["stage"] = "parsed"
+        st.rerun()
+
+
+# ── STAGE: confirm ────────────────────────────────────────────────────────────
+elif st.session_state["stage"] == "confirm":
+    result      = st.session_state["parse_result"]
+    final       = st.session_state["final_params"]
+
+    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
+    st.subheader("Confirm action")
+
+    st.markdown(
+        f"The following **{result.action.value.replace('_', ' ').upper()}** "
+        f"action will be executed:"
+    )
+
+    # Show all final params cleanly
+    for k, v in final.items():
+        if v and v not in (None, "None", ""):
             st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
 
-        col_conf, col_cancel = st.columns([1, 5])
-        confirm = col_conf.button("🚀 Execute", type="primary")
-        cancel  = col_cancel.button("✖ Cancel")
+    st.divider()
+    col1, col2, col3 = st.columns([1, 1, 5])
 
-        if cancel:
-            for key in ["parse_result", "missing_inputs", "confirmed"]:
-                st.session_state.pop(key, None)
-            st.rerun()
+    if col1.button("🚀 Execute", type="primary"):
+        st.session_state["stage"] = "done"
+        st.rerun()
 
-        if confirm:
-            st.session_state["confirmed"] = True
-            st.session_state["confirmed_params"] = all_params
+    if col2.button("← Back"):
+        st.session_state["stage"] = "filling" if result.missing_required else "parsed"
+        st.rerun()
 
-    # ── Execute ───────────────────────────────────────────────────────────────
-    if st.session_state.get("confirmed"):
-        all_params = st.session_state.get("confirmed_params", {})
+    if col3.button("✖ Cancel"):
+        _reset()
 
-        st.divider()
-        st.subheader("Executing...")
 
-        with st.spinner(f"Running {result.action.value}..."):
+# ── STAGE: done ───────────────────────────────────────────────────────────────
+elif st.session_state["stage"] == "done":
+    result = st.session_state["parse_result"]
+    final  = st.session_state["final_params"]
+
+    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
+    st.subheader("Executing...")
+
+    # Only run once — cache result in session_state
+    if "exec_result" not in st.session_state:
+        with st.spinner(f"Running {result.action.value.replace('_', ' ')}..."):
             try:
-                outcome = asyncio.run(assistant.dispatch(result, all_params))
-                status  = outcome.get("status", "")
-
-                if status == "completed":
-                    st.success("✅ Action completed successfully!")
-                    st.json(outcome)
-                elif status == "escalated":
-                    st.warning(
-                        "⏳ Action escalated for admin approval. "
-                        "Check the Approvals page.",
-                        icon="⏳",
-                    )
-                    st.json(outcome.get("result", {}))
-                elif status == "failed":
-                    st.error(f"❌ Action failed: {outcome.get('error', 'Unknown error')}")
-                else:
-                    st.warning(f"Unexpected status: {status}")
-                    st.json(outcome)
-
+                outcome = asyncio.run(assistant.dispatch(result, final))
+                st.session_state["exec_result"] = {"ok": True, "data": outcome}
             except Exception as exc:
-                st.error(f"❌ Unexpected error during execution: {exc}")
+                st.session_state["exec_result"] = {"ok": False, "error": str(exc)}
 
-        # Clear state so admin can run another instruction
-        st.divider()
-        if st.button("🔄 Run another instruction"):
-            for key in ["parse_result", "missing_inputs", "confirmed", "confirmed_params", "last_instruction"]:
-                st.session_state.pop(key, None)
-            st.rerun()
-            
+    exec_res = st.session_state["exec_result"]
+
+    if not exec_res["ok"]:
+        st.error(f"❌ Unexpected error: {exec_res['error']}")
+    else:
+        outcome = exec_res["data"]
+        status  = outcome.get("status", "")
+
+        if status == "completed":
+            st.success("✅ Action completed successfully!")
+            st.json(outcome)
+        elif status == "escalated":
+            st.warning("⏳ Action escalated for admin approval. Check the Approvals page.", icon="⏳")
+            st.json(outcome.get("result", {}))
+        elif status == "failed":
+            st.error(f"❌ Action failed: {outcome.get('error', 'Unknown error')}")
+            if outcome.get("result"):
+                st.json(outcome.get("result"))
+        else:
+            st.warning(f"Unexpected status: {status}")
+            st.json(outcome)
+
+    st.divider()
+    if st.button("🔄 Run another instruction", type="primary"):
+        _reset()

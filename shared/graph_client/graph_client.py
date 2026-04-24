@@ -509,7 +509,7 @@ class GraphClient:
             "groups",
             params={
                 "$select": "id,displayName",
-                # "$orderby": "displayName",
+                "$orderby": "displayName",
                 "$top": "999",
             },
         )
@@ -544,16 +544,62 @@ class GraphClient:
         )
         return result.get("value", [])
 
-    async def get_license_sku_by_name(self, sku_part_number: str) -> dict | None:
+    async def get_license_sku_by_name(self, name: str) -> dict | None:
         """
-        Resolves a license SKU part number (e.g. 'SPE_E3') to its full
-        license object including skuId.
-        Returns the license dict or None if not found.
+        Resolves a license name to its full license object (including skuId).
+
+        Tries three strategies in order, stopping at the first match:
+
+        1. Exact skuPartNumber match (e.g. "FLOW_FREE" == "FLOW_FREE")
+        2. Friendly name mapping — looks up the input in a known map of
+           human-readable names to skuPartNumber (e.g. "Microsoft Power Automate Free" -> "FLOW_FREE")
+        3. Normalised substring match — strips spaces/punctuation and checks
+           if the normalised input is contained in the normalised skuPartNumber
+           or vice versa. Handles partial names like "Power Automate Free".
+
+        Args:
+            name: Human-friendly license name or skuPartNumber.
+
+        Returns:
+            License dict with skuId, skuPartNumber etc., or None if not found.
         """
-        licenses = await self.list_licenses()
+        licenses  = await self.list_licenses()
+        name_up   = name.strip().upper()
+        name_norm = _normalise_sku(name)
+
+        # Strategy 1 — exact skuPartNumber match
         for lic in licenses:
-            if lic.get("skuPartNumber", "").upper() == sku_part_number.upper():
+            if lic.get("skuPartNumber", "").upper() == name_up:
+                logger.info("License matched by skuPartNumber: %s", lic["skuPartNumber"])
                 return lic
+
+        # Strategy 2 — friendly name map lookup
+        sku_from_map = _FRIENDLY_NAME_TO_SKU.get(name_up)
+        if sku_from_map:
+            for lic in licenses:
+                if lic.get("skuPartNumber", "").upper() == sku_from_map.upper():
+                    logger.info(
+                        "License matched via friendly name map: '%s' -> %s",
+                        name, lic["skuPartNumber"],
+                    )
+                    return lic
+
+        # Strategy 3 — normalised substring match
+        for lic in licenses:
+            sku_norm = _normalise_sku(lic.get("skuPartNumber", ""))
+            if name_norm in sku_norm or sku_norm in name_norm:
+                logger.info(
+                    "License matched by normalised substring: '%s' ~ %s",
+                    name, lic["skuPartNumber"],
+                )
+                return lic
+
+        logger.warning(
+            "License not found for name='%s'. "
+            "Available SKUs: %s",
+            name,
+            [l.get("skuPartNumber") for l in licenses],
+        )
         return None
 
     async def get_user_by_upn(self, upn: str) -> dict[str, Any]:
@@ -590,7 +636,7 @@ class GraphClient:
             "addLicenses":    [],
             "removeLicenses": [sku_id],
         })
-    
+
     async def set_usage_location(self, user_id: str, country_code: str) -> None:
         """
         PATCH /users/{id}
@@ -599,7 +645,7 @@ class GraphClient:
         """
         logger.info("Setting usageLocation=%s for user %s", country_code, user_id)
         await self._patch(f"users/{user_id}", {"usageLocation": country_code})
- 
+
     async def get_usage_location(self, user_id: str) -> str | None:
         """
         GET /users/{id}?$select=usageLocation
@@ -610,12 +656,46 @@ class GraphClient:
             params={"$select": "usageLocation"},
         )
         return result.get("usageLocation") or None
- 
+
     # =========================================================================
     # SEARCH METHODS
     # =========================================================================
- 
- 
+
+    async def search_users(self, query: str) -> list[dict]:
+        """
+        GET /users?$search="displayName:{query}" OR "userPrincipalName:{query}"
+        Searches users by display name or UPN prefix.
+        Returns up to 10 matching users with id, displayName, userPrincipalName.
+        Requires ConsistencyLevel: eventual header (already set in _headers).
+        """
+        result = await self._get(
+            "users",
+            params={
+                "$search":  f'"displayName:{query}" OR "userPrincipalName:{query}"',
+                "$select":  "id,displayName,userPrincipalName",
+                "$top":     "10",
+                "$orderby": "displayName",
+            },
+        )
+        return result.get("value", [])
+
+    async def search_applications(self, query: str) -> list[dict]:
+        """
+        GET /applications?$search="displayName:{query}"
+        Searches app registrations by display name.
+        Returns matching apps with id (objectId), appId, displayName.
+        """
+        result = await self._get(
+            "applications",
+            params={
+                "$search":  f'"displayName:{query}"',
+                "$select":  "id,appId,displayName",
+                "$top":     "10",
+                "$orderby": "displayName",
+            },
+        )
+        return result.get("value", [])
+
     async def get_service_principal_by_app_id(self, app_id: str) -> dict | None:
         """
         GET /servicePrincipals?$filter=appId eq '{app_id}'
@@ -631,7 +711,7 @@ class GraphClient:
         )
         sps = result.get("value", [])
         return sps[0] if sps else None
- 
+
     async def search_users(self, query: str) -> list[dict]:
         """
         GET /users?$search="displayName:{query}" OR startsWith(userPrincipalName)
@@ -647,11 +727,11 @@ class GraphClient:
                 "$search":  f'"displayName:{query}" OR "userPrincipalName:{query}"',
                 "$select":  "id,displayName,userPrincipalName",
                 "$top":     "15",
-                # "$orderby": "displayName",
+                "$orderby": "displayName",
             },
         )
         return result.get("value", [])
- 
+
     async def search_applications(self, query: str) -> list[dict]:
         """
         GET /applications?$search="displayName:{query}"
@@ -661,7 +741,7 @@ class GraphClient:
         """
         if not query or len(query.strip()) < 2:
             return []
- 
+
         result = await self._get(
             "applications",
             params={
@@ -671,7 +751,7 @@ class GraphClient:
             },
         )
         apps = result.get("value", [])
- 
+
         resolved = []
         for app in apps:
             sp_id = await self._resolve_sp_id(app["appId"])
@@ -682,7 +762,7 @@ class GraphClient:
                 "service_principal_id": sp_id or "",
             })
         return resolved
- 
+
     async def _resolve_sp_id(self, app_id: str) -> str | None:
         """
         GET /servicePrincipals?$filter=appId eq '{app_id}'
@@ -701,7 +781,91 @@ class GraphClient:
             return sps[0]["id"] if sps else None
         except Exception:
             return None
- 
+
+
+# ── License name helpers ──────────────────────────────────────────────────────
+
+def _normalise_sku(s: str) -> str:
+    """
+    Normalise a string for fuzzy SKU matching.
+    Uppercases, removes spaces, underscores, hyphens, and common filler words.
+    e.g. "Microsoft Power Automate Free" -> "POWRAUTOMATEFREE"
+    """
+    import re
+    s = s.upper()
+    # Remove common Microsoft prefixes that don't appear in SKU codes
+    for prefix in ["MICROSOFT ", "MS ", "AZURE ", "OFFICE ", "DYNAMICS "]:
+        s = s.replace(prefix, "")
+    # Remove all non-alphanumeric characters
+    s = re.sub(r"[^A-Z0-9]", "", s)
+    return s
+
+
+# Map of human-friendly license display names to their skuPartNumber codes.
+# Keys are UPPERCASED for case-insensitive lookup.
+# Add entries here as needed for licenses in your tenant.
+_FRIENDLY_NAME_TO_SKU: dict[str, str] = {
+    # Power Platform
+    "MICROSOFT POWER AUTOMATE FREE":          "FLOW_FREE",
+    "POWER AUTOMATE FREE":                    "FLOW_FREE",
+    "MICROSOFT FLOW FREE":                    "FLOW_FREE",
+    "POWER AUTOMATE PER USER":                "FLOW_PER_USER",
+    "POWER AUTOMATE PER USER PLAN":           "FLOW_PER_USER",
+    "POWER APPS PER USER":                    "POWERAPPS_PER_USER",
+    "POWER APPS PER USER PLAN":               "POWERAPPS_PER_USER",
+
+    # Microsoft 365
+    "MICROSOFT 365 BUSINESS BASIC":           "O365_BUSINESS_ESSENTIALS",
+    "MICROSOFT 365 BUSINESS STANDARD":        "O365_BUSINESS_PREMIUM",
+    "MICROSOFT 365 BUSINESS PREMIUM":         "SPB",
+    "MICROSOFT 365 E3":                       "SPE_E3",
+    "MICROSOFT 365 E5":                       "SPE_E5",
+    "MICROSOFT 365 F1":                       "M365_F1",
+    "MICROSOFT 365 F3":                       "SPE_F1",
+    "OFFICE 365 E1":                          "STANDARDPACK",
+    "OFFICE 365 E3":                          "ENTERPRISEPACK",
+    "OFFICE 365 E5":                          "ENTERPRISEPREMIUM",
+    "OFFICE 365 F3":                          "DESKLESSPACK",
+
+    # Azure AD / Entra
+    "AZURE ACTIVE DIRECTORY PREMIUM P1":      "AAD_PREMIUM",
+    "AZURE ACTIVE DIRECTORY PREMIUM P2":      "AAD_PREMIUM_P2",
+    "MICROSOFT ENTRA ID P1":                  "AAD_PREMIUM",
+    "MICROSOFT ENTRA ID P2":                  "AAD_PREMIUM_P2",
+    "ENTRA ID P1":                            "AAD_PREMIUM",
+    "ENTRA ID P2":                            "AAD_PREMIUM_P2",
+
+    # Intune
+    "MICROSOFT INTUNE":                       "INTUNE_A",
+    "INTUNE":                                 "INTUNE_A",
+
+    # Dynamics 365
+    "DYNAMICS 365 SALES ENTERPRISE":          "DYN365_ENTERPRISE_SALES",
+    "DYNAMICS 365 CUSTOMER SERVICE ENTERPRISE": "DYN365_ENTERPRISE_CUSTOMER_SERVICE",
+
+    # Power BI
+    "POWER BI PRO":                           "POWER_BI_PRO",
+    "POWER BI PREMIUM PER USER":              "POWER_BI_PREMIUM_PER_USER",
+    "POWER BI FREE":                          "POWER_BI_STANDARD",
+
+    # Defender / Security
+    "MICROSOFT DEFENDER FOR ENDPOINT P1":     "MDATP_Server",
+    "MICROSOFT DEFENDER FOR ENDPOINT P2":     "WIN_DEF_ATP",
+    "MICROSOFT DEFENDER FOR OFFICE 365 P1":   "ATP_ENTERPRISE",
+    "MICROSOFT DEFENDER FOR OFFICE 365 P2":   "THREAT_INTELLIGENCE",
+
+    # Visio / Project
+    "VISIO PLAN 1":                           "VISIOONLINE_PLAN1",
+    "VISIO PLAN 2":                           "VISIOCLIENT",
+    "PROJECT PLAN 1":                         "PROJECTESSENTIALS",
+    "PROJECT PLAN 3":                         "PROJECTPREMIUM",
+    "PROJECT PLAN 5":                         "PROJECTPROFESSIONAL",
+
+    # Teams
+    "MICROSOFT TEAMS ESSENTIALS":             "TEAMS_ESSENTIALS",
+    "MICROSOFT TEAMS EXPLORATORY":            "TEAMS_EXPLORATORY",
+    "MICROSOFT TEAMS ROOMS PRO":              "MTR_PREM",
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
