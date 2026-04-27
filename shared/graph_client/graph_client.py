@@ -661,41 +661,6 @@ class GraphClient:
     # SEARCH METHODS
     # =========================================================================
 
-    async def search_users(self, query: str) -> list[dict]:
-        """
-        GET /users?$search="displayName:{query}" OR "userPrincipalName:{query}"
-        Searches users by display name or UPN prefix.
-        Returns up to 10 matching users with id, displayName, userPrincipalName.
-        Requires ConsistencyLevel: eventual header (already set in _headers).
-        """
-        result = await self._get(
-            "users",
-            params={
-                "$search":  f'"displayName:{query}" OR "userPrincipalName:{query}"',
-                "$select":  "id,displayName,userPrincipalName",
-                "$top":     "10",
-                "$orderby": "displayName",
-            },
-        )
-        return result.get("value", [])
-
-    async def search_applications(self, query: str) -> list[dict]:
-        """
-        GET /applications?$search="displayName:{query}"
-        Searches app registrations by display name.
-        Returns matching apps with id (objectId), appId, displayName.
-        """
-        result = await self._get(
-            "applications",
-            params={
-                "$search":  f'"displayName:{query}"',
-                "$select":  "id,appId,displayName",
-                "$top":     "10",
-                "$orderby": "displayName",
-            },
-        )
-        return result.get("value", [])
-
     async def get_service_principal_by_app_id(self, app_id: str) -> dict | None:
         """
         GET /servicePrincipals?$filter=appId eq '{app_id}'
@@ -727,7 +692,7 @@ class GraphClient:
                 "$search":  f'"displayName:{query}" OR "userPrincipalName:{query}"',
                 "$select":  "id,displayName,userPrincipalName",
                 "$top":     "15",
-                "$orderby": "displayName",
+                # "$orderby": "displayName",
             },
         )
         return result.get("value", [])
