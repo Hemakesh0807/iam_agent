@@ -1,7 +1,9 @@
 """
-Page 8 — AI Assistant
-Natural language IAM management. Type any instruction, the AI extracts
-parameters, prompts for anything missing, confirms, then executes.
+Page 8 — AI Assistant (Context-aware, Memory-enabled)
+
+Chat interface for natural language IAM management.
+Maintains conversation history across turns, resolves entity references,
+validates entities, confirms before executing, and audits everything.
 """
 import asyncio
 import sys
@@ -11,18 +13,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import streamlit as st
 from ai_engine.iam_assistant import IAMAssistant, get_param_label
+from ai_engine.conversation_memory import ConversationMemory
 from shared.models import AssistantAction
 
 st.set_page_config(
     page_title="AI Assistant — Agentic IAM", page_icon="🤖", layout="wide"
 )
+
+# ── Page header ───────────────────────────────────────────────────────────────
 st.title("🤖 AI Assistant")
 st.caption(
-    "Type any IAM instruction in plain English. "
-    "The AI extracts parameters, asks for anything missing, confirms, then executes."
+    "Natural language IAM management. Remembers context across turns — "
+    "say 'add him to DevOps group' after onboarding a user and it knows who 'him' is."
 )
 
 assistant = IAMAssistant()
+memory    = ConversationMemory.get()   # Always get from session_state — safe across reruns
 
 # ── Country codes for usage_location prompt ───────────────────────────────────
 COUNTRY_CODES = {
@@ -38,271 +44,337 @@ COUNTRY_CODES = {
     "Japan (JP)":          "JP",
 }
 
-# ── Examples ──────────────────────────────────────────────────────────────────
-with st.expander("💡 Example instructions", expanded=False):
-    st.markdown("""
-**Onboarding**
-- *Onboard Jane Doe as a Software Engineer in Engineering, UPN: jane@company.com, based in India*
-- *Create account for John Smith, department: Finance, job title: Analyst, UPN: john@company.com, location: US*
+# ── Session state keys ────────────────────────────────────────────────────────
+# We use explicit keys to survive Streamlit reruns cleanly.
+# The stage machine lives entirely in st.session_state.
 
-**Offboarding / Isolation**
-- *Offboard john@company.com — he resigned last Friday*
-- *Isolate jane@company.com, impossible travel detected, high severity*
+def _s(key: str, default=None):
+    """Get a session state value with a default."""
+    return st.session_state.get(key, default)
 
-**Group & license management**
-- *Add jane@company.com to the DevOps team group*
-- *Remove john@company.com from the Finance group*
-- *Assign Microsoft 365 E3 license to jane@company.com*
-- *Remove all licenses from john@company.com*
-    """)
+def _sset(key: str, value) -> None:
+    """Set a session state value."""
+    st.session_state[key] = value
 
-st.divider()
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# State machine:
-#   stage = "input"      → show instruction textbox
-#   stage = "parsed"     → show extracted params
-#   stage = "filling"    → show missing params form
-#   stage = "confirm"    → show confirmation before execute
-#   stage = "done"       → show result
-# ═══════════════════════════════════════════════════════════════════════════════
-
-if "stage" not in st.session_state:
-    st.session_state["stage"] = "input"
-
-
-def _reset():
-    for k in ["stage", "parse_result", "missing_values", "final_params", "exec_result"]:
+def _reset_turn() -> None:
+    """Clear all per-turn state — keeps memory and chat log intact."""
+    for k in ["turn_stage", "turn_parse_result", "turn_missing_values",
+              "turn_final_params", "turn_entity_warnings", "turn_instruction"]:
         st.session_state.pop(k, None)
+
+def _reset_all() -> None:
+    """Clear everything including memory and chat log."""
+    memory.clear()
+    for k in list(st.session_state.keys()):
+        if k.startswith("turn_") or k == "chat_log":
+            del st.session_state[k]
     st.rerun()
 
+# Initialise chat log (list of rendered message dicts)
+if "chat_log" not in st.session_state:
+    st.session_state["chat_log"] = []
 
-# ── STAGE: input ──────────────────────────────────────────────────────────────
-if st.session_state["stage"] == "input":
 
-    instruction = st.text_area(
-        "Your instruction",
-        placeholder="e.g. Onboard Jane Doe as a Software Engineer in Engineering, UPN: jane@company.com, based in India",
-        height=110,
-        key="ai_instruction_input",
-    )
+# ── Sidebar — memory status ───────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 🧠 Conversation Memory")
+    st.caption(f"{memory.count} / 10 turns stored")
 
-    if st.button("🔍 Parse instruction", type="primary", disabled=not (instruction or "").strip()):
-        with st.spinner("Analysing instruction..."):
-            result = asyncio.run(assistant.parse(instruction.strip()))
-            st.session_state["parse_result"] = result
-            st.session_state["stage"] = "parsed"
+    if memory.count > 0:
+        last_user = memory.last_user()
+        if last_user:
+            st.success(
+                f"Last user: **{last_user.get('display_name') or last_user.get('user_principal_name', 'unknown')}**"
+            )
+
+        with st.expander("View history", expanded=False):
+            for i, turn in enumerate(memory.turns, start=1):
+                st.caption(
+                    f"{i}. [{turn.timestamp.strftime('%H:%M')}] "
+                    f"**{turn.action}** — {turn.status}"
+                )
+                st.caption(f"   _{turn.instruction[:60]}..._")
+
+        if st.button("🗑 Clear memory", type="secondary"):
+            _reset_all()
+
+    known_users = memory.get_all_known_users()
+    if known_users:
+        st.divider()
+        st.markdown("**Known users this session**")
+        for u in known_users:
+            st.caption(f"• {u.get('display_name', '')} `{u.get('user_principal_name', '')}`")
+
+    st.divider()
+    with st.expander("💡 Example instructions"):
+        st.markdown("""
+**Multi-turn (uses memory)**
+- *Onboard Jane Doe as Engineer in Engineering, UPN: jane@co.com, India*
+- *Add her to the DevOps group*
+- *Assign Microsoft 365 E3 to her*
+- *Offboard john@co.com — resigned*
+- *Now isolate him — suspicious login*
+
+**Single actions**
+- *Add jane@co.com to Finance group*
+- *Remove Power Automate Free license from john@co.com*
+- *Remove john from all groups*
+        """)
+
+
+# ── Chat log display ──────────────────────────────────────────────────────────
+chat_container = st.container()
+with chat_container:
+    for msg in st.session_state["chat_log"]:
+        role  = msg["role"]
+        text  = msg["text"]
+        extra = msg.get("extra")   # dict with extra st.json data
+
+        if role == "user":
+            with st.chat_message("user"):
+                st.write(text)
+        elif role == "assistant":
+            with st.chat_message("assistant"):
+                st.write(text)
+                if extra:
+                    st.json(extra)
+        elif role == "warning":
+            with st.chat_message("assistant"):
+                st.warning(text, icon="⚠️")
+        elif role == "error":
+            with st.chat_message("assistant"):
+                st.error(text)
+        elif role == "success":
+            with st.chat_message("assistant"):
+                st.success(text)
+                if extra:
+                    st.json(extra)
+
+
+def _log(role: str, text: str, extra: dict = None) -> None:
+    """Append a message to the chat log and session_state."""
+    st.session_state["chat_log"].append({"role": role, "text": text, "extra": extra})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STAGE MACHINE
+# stage: None | "parsed" | "filling" | "confirm" | "executing"
+# ═══════════════════════════════════════════════════════════════════════════════
+
+stage = _s("turn_stage")
+
+
+# ── No active turn — show input ───────────────────────────────────────────────
+if stage is None:
+    instruction = st.chat_input("Type an IAM instruction...")
+
+    if instruction and instruction.strip():
+        _sset("turn_instruction", instruction.strip())
+        _log("user", instruction.strip())
+
+        # Parse with memory context
+        with st.spinner("Analysing..."):
+            result = asyncio.run(assistant.parse(instruction.strip(), memory=memory))
+            _sset("turn_parse_result", result)
+
+        if result.action == AssistantAction.UNKNOWN:
+            _log("error",
+                 f"❓ Could not identify a supported IAM action. "
+                 f"Reason: {result.reasoning}\n\n"
+                 "Try rephrasing. Check the sidebar for example instructions.")
+            _reset_turn()
             st.rerun()
 
+        # Entity resolution — resolve pronouns/partial names using memory
+        with st.spinner("Resolving entities..."):
+            resolved_extracted, entity_warnings = asyncio.run(
+                assistant.resolve_entities(
+                    result.action.value, dict(result.extracted), memory=memory
+                )
+            )
+            result.extracted.update(resolved_extracted)
+            _sset("turn_entity_warnings", entity_warnings)
 
-# ── STAGE: parsed ─────────────────────────────────────────────────────────────
-elif st.session_state["stage"] == "parsed":
-    result = st.session_state["parse_result"]
+        # Show entity warnings (ambiguous references etc.)
+        for w in entity_warnings:
+            _log("warning", f"⚠ {w}")
 
-    # Show original instruction for context
-    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
+        # Recompute missing after entity resolution
+        from ai_engine.iam_assistant import _REQUIRED_PARAMS, _compute_missing
+        required = _REQUIRED_PARAMS.get(result.action, [])
+        result.missing_required = _compute_missing(required, result.extracted)
+        _sset("turn_parse_result", result)
 
-    # Unknown action
-    if result.action == AssistantAction.UNKNOWN:
-        st.error(
-            "❓ Could not identify a supported IAM action. "
-            "Please rephrase or check the examples above."
+        # Show what was parsed
+        conf_emoji = "✅" if result.confidence >= 0.8 else "⚠" if result.confidence >= 0.6 else "❓"
+        parsed_msg = (
+            f"{conf_emoji} **{result.action.value.replace('_', ' ').title()}** "
+            f"(confidence: {result.confidence:.0%})\n\n"
+            f"*{result.reasoning}*"
         )
-        st.caption(f"Reasoning: {result.reasoning}")
-        if st.button("🔄 Try again"):
-            _reset()
-        st.stop()
+        if result.extracted:
+            parsed_msg += "\n\n**Extracted:**\n" + "\n".join(
+                f"- **{k.replace('_', ' ').title()}**: `{v}`"
+                for k, v in result.extracted.items()
+                if v and v not in (None, "None", "")
+            )
+        _log("assistant", parsed_msg)
 
-    # Low confidence
-    if result.confidence < 0.65:
-        st.warning(
-            f"⚠ Low confidence ({result.confidence:.0%}) — please review the extracted "
-            "parameters carefully before proceeding.",
-            icon="⚠️",
-        )
+        if result.missing_required:
+            _log("warning",
+                 f"Missing required: **{', '.join(p.replace('_', ' ') for p in result.missing_required)}**. "
+                 "Please provide them below.")
+            _sset("turn_stage", "filling")
+        else:
+            # No missing params — set final_params now so confirm/executing stages have it
+            _sset("turn_final_params", dict(result.extracted))
+            _sset("turn_stage", "confirm")
 
-    # Action summary
-    col_a, col_b = st.columns([1, 3])
-    col_a.metric("Action",     result.action.value.replace("_", " ").title())
-    col_b.metric("Confidence", f"{result.confidence:.0%}")
-    st.caption(f"*{result.reasoning}*")
-
-    # Extracted parameters
-    if result.extracted:
-        st.markdown("**Extracted parameters**")
-        for k, v in result.extracted.items():
-            st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
-
-    # Missing parameters
-    if result.missing_required:
-        st.warning(
-            f"Missing required parameters: **{', '.join(p.replace('_', ' ') for p in result.missing_required)}**",
-            icon="⚠️",
-        )
-        col1, col2 = st.columns([1, 5])
-        if col1.button("➡ Provide missing info", type="primary"):
-            st.session_state["stage"] = "filling"
-            st.rerun()
-        if col2.button("✖ Cancel"):
-            _reset()
-    else:
-        # All params present — go straight to confirm
-        st.success("✅ All required parameters extracted. Ready to execute.")
-        col1, col2 = st.columns([1, 5])
-        if col1.button("➡ Review & confirm", type="primary"):
-            st.session_state["final_params"] = dict(result.extracted)
-            st.session_state["stage"] = "confirm"
-            st.rerun()
-        if col2.button("✖ Cancel"):
-            _reset()
+        st.rerun()
 
 
-# ── STAGE: filling ────────────────────────────────────────────────────────────
-elif st.session_state["stage"] == "filling":
-    result = st.session_state["parse_result"]
+# ── FILLING — collect missing params ──────────────────────────────────────────
+elif stage == "filling":
+    result = _s("turn_parse_result")
+    if not result:
+        _reset_turn(); st.rerun()
 
-    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
-    st.subheader("Provide missing parameters")
-    st.caption(
-        f"Action: **{result.action.value.replace('_', ' ').title()}** — "
-        f"please fill in the fields below."
-    )
-
-    # Show already extracted params as read-only reference
-    if result.extracted:
-        with st.expander("Already extracted", expanded=False):
-            for k, v in result.extracted.items():
-                st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
-
-    # Dynamic form for missing fields
-    missing_values: dict = {}
-    with st.form("missing_params_form"):
+    st.markdown("**Provide missing information:**")
+    with st.form("fill_missing", clear_on_submit=False):
+        missing_inputs: dict = {}
         for param in result.missing_required:
             label = get_param_label(param)
-
             if param == "usage_location":
-                sel = st.selectbox(
-                    f"{label} *",
-                    options=list(COUNTRY_CODES.keys()),
-                    help="Required by Entra ID before a license can be assigned to the user.",
-                )
-                missing_values[param] = COUNTRY_CODES[sel]
-
+                sel = st.selectbox(f"{label} *", options=list(COUNTRY_CODES.keys()))
+                missing_inputs[param] = COUNTRY_CODES[sel]
             elif param == "severity":
-                missing_values[param] = st.selectbox(
-                    f"{label} *", options=["high", "medium", "low"]
-                )
-
-            elif "reason" in param or "alert_reason" in param:
-                missing_values[param] = st.text_area(
-                    f"{label} *", placeholder="Enter reason..."
-                )
-
+                missing_inputs[param] = st.selectbox(f"{label} *", ["high", "medium", "low"])
+            elif "reason" in param:
+                missing_inputs[param] = st.text_area(f"{label} *", placeholder="Enter reason...")
             else:
-                missing_values[param] = st.text_input(
-                    f"{label} *",
-                    placeholder=f"Enter {param.replace('_', ' ')}...",
+                missing_inputs[param] = st.text_input(
+                    f"{label} *", placeholder=f"Enter {param.replace('_', ' ')}..."
                 )
 
-        filled = st.form_submit_button("✅ Continue", type="primary")
+        c1, c2 = st.columns([1, 5])
+        submitted = c1.form_submit_button("Continue ➡", type="primary")
+        cancelled = c2.form_submit_button("✖ Cancel")
 
-    if filled:
-        # Validate all required fields are now filled.
-        # Selectbox fields (usage_location, severity) always have a value
-        # since Streamlit pre-selects the first option — no special handling needed.
-        still_missing = [
+    if cancelled:
+        _log("assistant", "↩ Cancelled.")
+        _reset_turn(); st.rerun()
+
+    if submitted:
+        # Validate no field is still empty (selectboxes always have a value)
+        still_empty = [
             p for p in result.missing_required
-            if not missing_values.get(p)
-            or (isinstance(missing_values.get(p), str) and not missing_values[p].strip())
+            if not missing_inputs.get(p)
+            or (isinstance(missing_inputs[p], str) and not missing_inputs[p].strip())
         ]
-        if still_missing:
-            for p in still_missing:
-                st.error(f"'{get_param_label(p)}' is still required.")
+        if still_empty:
+            st.error(f"Still required: {', '.join(get_param_label(p) for p in still_empty)}")
         else:
-            # Merge extracted + filled
-            final = {**result.extracted, **missing_values}
-            st.session_state["missing_values"] = missing_values
-            st.session_state["final_params"]   = final
-            st.session_state["stage"]          = "confirm"
+            _sset("turn_missing_values", missing_inputs)
+            final = {**result.extracted, **missing_inputs}
+            _sset("turn_final_params", final)
+            _sset("turn_stage", "confirm")
+
+            # Log what was filled
+            filled_msg = "✅ Information provided:\n" + "\n".join(
+                f"- **{k.replace('_', ' ').title()}**: `{v}`"
+                for k, v in missing_inputs.items()
+            )
+            _log("user", filled_msg)
             st.rerun()
 
-    if st.button("← Back"):
-        st.session_state["stage"] = "parsed"
+
+# ── CONFIRM — show full params and ask to execute ─────────────────────────────
+elif stage == "confirm":
+    result      = _s("turn_parse_result")
+    final       = _s("turn_final_params")
+    warnings    = _s("turn_entity_warnings", [])
+
+    if not result:
+        _reset_turn(); st.rerun()
+
+    # Ensure final is always a valid dict — fallback to extracted if somehow missing
+    if final is None:
+        final = dict(result.extracted) if result.extracted else {}
+        _sset("turn_final_params", final)
+
+    with st.form("confirm_form", clear_on_submit=True):
+        st.markdown(
+            f"**Ready to execute: {result.action.value.replace('_', ' ').upper()}**\n\n"
+            + "\n".join(
+                f"- **{k.replace('_', ' ').title()}**: `{v}`"
+                for k, v in final.items()
+                if v and v not in (None, "None", "")
+                and not k.startswith("_")
+            )
+        )
+        if warnings:
+            for w in warnings:
+                st.warning(w, icon="⚠️")
+
+        c1, c2 = st.columns([1, 5])
+        confirmed = c1.form_submit_button("🚀 Execute", type="primary")
+        cancelled = c2.form_submit_button("✖ Cancel")
+
+    if cancelled:
+        _log("assistant", "↩ Cancelled.")
+        _reset_turn(); st.rerun()
+
+    if confirmed:
+        _log("assistant",
+             f"🚀 Executing **{result.action.value.replace('_', ' ').title()}**...")
+        _sset("turn_final_params", final)
+        _sset("turn_stage", "executing")
         st.rerun()
 
 
-# ── STAGE: confirm ────────────────────────────────────────────────────────────
-elif st.session_state["stage"] == "confirm":
-    result      = st.session_state["parse_result"]
-    final       = st.session_state["final_params"]
+# ── EXECUTING — run the action ────────────────────────────────────────────────
+elif stage == "executing":
+    result = _s("turn_parse_result")
+    final  = _s("turn_final_params", {})
 
-    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
-    st.subheader("Confirm action")
+    if not result:
+        _reset_turn(); st.rerun()
 
-    st.markdown(
-        f"The following **{result.action.value.replace('_', ' ').upper()}** "
-        f"action will be executed:"
-    )
+    # Pass instruction to dispatcher for audit logging
+    final["_instruction"] = _s("turn_instruction", "")
 
-    # Show all final params cleanly
-    for k, v in final.items():
-        if v and v not in (None, "None", ""):
-            st.write(f"- **{k.replace('_', ' ').title()}**: `{v}`")
+    with st.spinner(f"Running {result.action.value.replace('_', ' ')}..."):
+        try:
+            outcome = asyncio.run(
+                assistant.dispatch(result, final, memory=memory)
+            )
+            if outcome is None:
+                outcome = {"status": "failed", "error": "Dispatcher returned no result."}
+        except Exception as exc:
+            outcome = {"status": "failed", "error": str(exc), "resolved_entities": {}}
 
-    st.divider()
-    col1, col2, col3 = st.columns([1, 1, 5])
+    status = outcome.get("status", "failed")
 
-    if col1.button("🚀 Execute", type="primary"):
-        st.session_state["stage"] = "done"
-        st.rerun()
+    if status == "completed":
+        # Build a clean result summary (exclude internal keys)
+        clean = {k: v for k, v in outcome.items()
+                 if k not in ("resolved_entities", "status", "error", "result")
+                 and v is not None}
+        if outcome.get("result"):
+            clean.update(outcome["result"])
+        _log("success", f"✅ **{result.action.value.replace('_', ' ').title()}** completed successfully.", clean or None)
 
-    if col2.button("← Back"):
-        st.session_state["stage"] = "filling" if result.missing_required else "parsed"
-        st.rerun()
+    elif status == "escalated":
+        _log("warning",
+             "⏳ Action escalated for admin approval. Check the Approvals page.",
+             outcome.get("result"))
 
-    if col3.button("✖ Cancel"):
-        _reset()
+    elif status == "failed":
+        _log("error", f"❌ Failed: {outcome.get('error', 'Unknown error')}")
 
-
-# ── STAGE: done ───────────────────────────────────────────────────────────────
-elif st.session_state["stage"] == "done":
-    result = st.session_state["parse_result"]
-    final  = st.session_state["final_params"]
-
-    st.info(f"**Instruction:** {st.session_state.get('ai_instruction_input', '')}", icon="📝")
-    st.subheader("Executing...")
-
-    # Only run once — cache result in session_state
-    if "exec_result" not in st.session_state:
-        with st.spinner(f"Running {result.action.value.replace('_', ' ')}..."):
-            try:
-                outcome = asyncio.run(assistant.dispatch(result, final))
-                st.session_state["exec_result"] = {"ok": True, "data": outcome}
-            except Exception as exc:
-                st.session_state["exec_result"] = {"ok": False, "error": str(exc)}
-
-    exec_res = st.session_state["exec_result"]
-
-    if not exec_res["ok"]:
-        st.error(f"❌ Unexpected error: {exec_res['error']}")
     else:
-        outcome = exec_res["data"]
-        status  = outcome.get("status", "")
+        _log("assistant", f"Unexpected status: {status}", outcome)
 
-        if status == "completed":
-            st.success("✅ Action completed successfully!")
-            st.json(outcome)
-        elif status == "escalated":
-            st.warning("⏳ Action escalated for admin approval. Check the Approvals page.", icon="⏳")
-            st.json(outcome.get("result", {}))
-        elif status == "failed":
-            st.error(f"❌ Action failed: {outcome.get('error', 'Unknown error')}")
-            if outcome.get("result"):
-                st.json(outcome.get("result"))
-        else:
-            st.warning(f"Unexpected status: {status}")
-            st.json(outcome)
+    _reset_turn()   # Clear per-turn state — memory already updated by dispatcher
+    st.rerun()
 
-    st.divider()
-    if st.button("🔄 Run another instruction", type="primary"):
-        _reset()
