@@ -747,6 +747,26 @@ class GraphClient:
         except Exception:
             return None
 
+    async def set_manager(self, user_id: str, manager_id: str) -> None:
+        """
+        PUT /users/{id}/manager/$ref
+        Sets the manager for a user.
+        manager_id must be the object ID of the manager.
+        """
+        logger.info("Setting manager %s for user %s", manager_id, user_id)
+        await self._post(
+            f"users/{user_id}/manager/$ref",
+            {"@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{manager_id}"},
+        )
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _cert_expiry_date() -> str:
+    """Returns an ISO 8601 date string 3 years from now — default cert lifetime."""
+    from datetime import datetime, timezone, timedelta
+    expiry = datetime.now(timezone.utc) + timedelta(days=3 * 365)
+    return expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # ── License name helpers ──────────────────────────────────────────────────────
 
@@ -833,10 +853,3 @@ _FRIENDLY_NAME_TO_SKU: dict[str, str] = {
 }
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _cert_expiry_date() -> str:
-    """Returns an ISO 8601 date string 3 years from now — default cert lifetime."""
-    from datetime import datetime, timezone, timedelta
-    expiry = datetime.now(timezone.utc) + timedelta(days=3 * 365)
-    return expiry.strftime("%Y-%m-%dT%H:%M:%SZ")

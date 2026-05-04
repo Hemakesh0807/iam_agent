@@ -182,3 +182,61 @@ class AssistantParseResult(BaseModel):
     extracted:       dict[str, Any] = Field(default_factory=dict)
     missing_required: list[str]     = Field(default_factory=list)
     reasoning:       str            = ""
+
+
+# ── Bulk User Onboarding Models ───────────────────────────────────────────────
+ 
+class BulkUserRowStatus(str, Enum):
+    COMPLETED = "completed"
+    PARTIAL   = "partial"    # User created but some sub-operations failed
+    FAILED    = "failed"     # User was not created at all
+    SKIPPED   = "skipped"    # Skipped due to pre-flight validation failure
+ 
+class BulkUserSubOp(BaseModel):
+    """Result of a single sub-operation within a user onboarding row."""
+    name:     str            # e.g. "create_account", "assign_group", "assign_license"
+    success:  bool
+    detail:   str = ""       # Group name, license name, or error message
+ 
+class BulkUserResult(BaseModel):
+    """Result for a single row in a bulk user onboarding run."""
+    row:              int
+    display_name:     str
+    upn:              str
+    status:           BulkUserRowStatus
+    user_id:          str | None = None     # Set if account was created
+    duration_seconds: float = 0.0
+    sub_ops:          list[BulkUserSubOp] = Field(default_factory=list)
+    error:            str | None = None     # Top-level error if account creation failed
+ 
+    def summary_line(self) -> str:
+        failed_ops = [s for s in self.sub_ops if not s.success]
+        if self.status == BulkUserRowStatus.COMPLETED:
+            return "All operations completed"
+        elif self.status == BulkUserRowStatus.PARTIAL:
+            return "; ".join(f"{s.name}: {s.detail}" for s in failed_ops)
+        elif self.status == BulkUserRowStatus.FAILED:
+            return self.error or "Unknown error"
+        elif self.status == BulkUserRowStatus.SKIPPED:
+            return self.error or "Pre-flight validation failed"
+        return ""
+ 
+class BulkUserPreflightIssue(BaseModel):
+    """A single pre-flight validation issue for a CSV row."""
+    row:      int
+    upn:      str
+    severity: str   # "error" (blocks run) | "warning" (informational)
+    message:  str
+ 
+class BulkUserRunSummary(BaseModel):
+    """Full summary of a bulk user onboarding run."""
+    total:            int
+    completed:        int
+    partial:          int
+    failed:           int
+    skipped:          int
+    total_duration:   float
+    results:          list[BulkUserResult]
+    dry_run:          bool = False
+ 
+

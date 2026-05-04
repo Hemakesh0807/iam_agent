@@ -1,0 +1,84 @@
+06:46:14  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:46:14  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:46:14  WARNING   ai_engine.orchestrator  SKIP_APPROVAL=true — approval gate is DISABLED. All flows will auto-execute. Never use this in production.
+06:46:14  INFO      msal.authority  Initializing with Entra authority: https://login.microsoftonline.com/5950e39e-81d1-45a1-8618-fe39a39b0448
+06:46:15  INFO      shared.graph_client.auth  Acquired new Graph API token. Expires in 3599s.
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser01@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser02@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser03@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onboarding-group%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onbaording-group-1%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/subscribedSkus?%24select=skuId%2CskuPartNumber%2CconsumedUnits%2CprepaidUnits "HTTP/1.1 200 OK"
+06:46:15  INFO      shared.graph_client.graph_client  License matched via friendly name map: 'MICROSOFT FLOW FREE' -> FLOW_FREE
+06:46:15  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onboarding-group%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:46:15  INFO      user_bot.triggers.csv_bulk_user_trigger  Group resolved: 'test-onboarding-group' -> 12761bce-2c06-4cf0-8820-76342656e1b2
+06:46:16  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onbaording-group-1%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:46:16  INFO      user_bot.triggers.csv_bulk_user_trigger  Group resolved: 'test-onbaording-group-1' -> 75ab3c19-c4ad-40e7-8455-b5decb41d8da
+06:46:16  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/subscribedSkus?%24select=skuId%2CskuPartNumber%2CconsumedUnits%2CprepaidUnits "HTTP/1.1 200 OK"
+06:46:16  INFO      shared.graph_client.graph_client  License matched via friendly name map: 'MICROSOFT FLOW FREE' -> FLOW_FREE
+06:46:16  INFO      user_bot.triggers.csv_bulk_user_trigger  License resolved: 'MICROSOFT FLOW FREE' -> f30db892-07e9-47e9-837c-80727f46fd3d
+06:46:16  WARNING   shared.audit.audit_logger  AuditLogger: COSMOS_DB_ENDPOINT not set. Writing audit logs to local file: /home/LabsKraft/.gemini/antigravity/scratch/agentic-iam/audit.jsonl
+06:46:16  INFO      user_bot.flows.bulk_user_onboarding  Bulk user onboarding started: 3 user(s) dry_run=True
+06:46:16  INFO      user_bot.flows.bulk_user_onboarding  Processing row 1/3: iambulkuser01@michaelkloudkrafthotmail.onmicrosoft.com
+06:46:16  INFO      user_bot.flows.bulk_user_onboarding  Processing row 2/3: iambulkuser02@michaelkloudkrafthotmail.onmicrosoft.com
+06:46:16  INFO      user_bot.flows.bulk_user_onboarding  Processing row 3/3: iambulkuser03@michaelkloudkrafthotmail.onmicrosoft.com
+06:46:16  INFO      user_bot.flows.bulk_user_onboarding  Bulk user onboarding complete: total=3 completed=3 partial=0 failed=0 skipped=0 duration=0.00s dry_run=True
+
+06:47:03  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:47:03  INFO      ai_engine._openai_client  OpenAI client: Azure (endpoint=https://kraft-cyber.cognitiveservices.azure.com/)
+06:47:03  WARNING   ai_engine.orchestrator  SKIP_APPROVAL=true — approval gate is DISABLED. All flows will auto-execute. Never use this in production.
+06:47:03  INFO      msal.authority  Initializing with Entra authority: https://login.microsoftonline.com/5950e39e-81d1-45a1-8618-fe39a39b0448
+06:47:03  INFO      shared.graph_client.auth  Acquired new Graph API token. Expires in 3599s.
+06:47:03  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser01@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:47:03  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser02@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/users/iambulkuser03@michaelkloudkrafthotmail.onmicrosoft.com?%24select=id%2CdisplayName%2CuserPrincipalName%2CaccountEnabled%2CassignedLicenses%2Cdepartment%2CjobTitle "HTTP/1.1 404 Not Found"
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onboarding-group%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onbaording-group-1%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/subscribedSkus?%24select=skuId%2CskuPartNumber%2CconsumedUnits%2CprepaidUnits "HTTP/1.1 200 OK"
+06:47:04  INFO      shared.graph_client.graph_client  License matched via friendly name map: 'MICROSOFT FLOW FREE' -> FLOW_FREE
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onboarding-group%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:47:04  INFO      user_bot.triggers.csv_bulk_user_trigger  Group resolved: 'test-onboarding-group' -> 12761bce-2c06-4cf0-8820-76342656e1b2
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/groups?%24filter=displayName%20eq%20%27test-onbaording-group-1%27&%24select=id%2CdisplayName "HTTP/1.1 200 OK"
+06:47:04  INFO      user_bot.triggers.csv_bulk_user_trigger  Group resolved: 'test-onbaording-group-1' -> 75ab3c19-c4ad-40e7-8455-b5decb41d8da
+06:47:04  INFO      httpx  HTTP Request: GET https://graph.microsoft.com/v1.0/subscribedSkus?%24select=skuId%2CskuPartNumber%2CconsumedUnits%2CprepaidUnits "HTTP/1.1 200 OK"
+06:47:04  INFO      shared.graph_client.graph_client  License matched via friendly name map: 'MICROSOFT FLOW FREE' -> FLOW_FREE
+06:47:04  INFO      user_bot.triggers.csv_bulk_user_trigger  License resolved: 'MICROSOFT FLOW FREE' -> f30db892-07e9-47e9-837c-80727f46fd3d
+06:47:04  WARNING   shared.audit.audit_logger  AuditLogger: COSMOS_DB_ENDPOINT not set. Writing audit logs to local file: /home/LabsKraft/.gemini/antigravity/scratch/agentic-iam/audit.jsonl
+06:47:04  INFO      user_bot.flows.bulk_user_onboarding  Bulk user onboarding started: 3 user(s) dry_run=False
+06:47:04  INFO      user_bot.flows.bulk_user_onboarding  Processing row 1/3: iambulkuser01@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:05  INFO      shared.graph_client.graph_client  Creating user: iambulkuser01@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:05  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users "HTTP/1.1 201 Created"
+06:47:05  INFO      shared.graph_client.graph_client  User created with ID: 251c4364-a92e-41dd-a0fc-f12ff51b742b
+06:47:05  INFO      user_bot.flows.bulk_user_onboarding  Row 1: account created user_id=251c4364-a92e-41dd-a0fc-f12ff51b742b
+06:47:05  INFO      shared.graph_client.graph_client  Adding user 251c4364-a92e-41dd-a0fc-f12ff51b742b to group 12761bce-2c06-4cf0-8820-76342656e1b2
+06:47:06  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/12761bce-2c06-4cf0-8820-76342656e1b2/members/$ref "HTTP/1.1 204 No Content"
+06:47:06  INFO      user_bot.flows.bulk_user_onboarding  Row 1: groups 1/1 assigned.
+06:47:06  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_onboarding status=completed principal=251c4364-a92e-41dd-a0fc-f12ff51b742b
+06:47:06  INFO      user_bot.flows.bulk_user_onboarding  Row 1: status=completed duration=1.35s
+06:47:06  INFO      user_bot.flows.bulk_user_onboarding  Processing row 2/3: iambulkuser02@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:06  INFO      shared.graph_client.graph_client  Creating user: iambulkuser02@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:06  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users "HTTP/1.1 201 Created"
+06:47:06  INFO      shared.graph_client.graph_client  User created with ID: cc3ad2e2-92ec-4d6a-b51a-1140b791127a
+06:47:06  INFO      user_bot.flows.bulk_user_onboarding  Row 2: account created user_id=cc3ad2e2-92ec-4d6a-b51a-1140b791127a
+06:47:06  INFO      shared.graph_client.graph_client  Adding user cc3ad2e2-92ec-4d6a-b51a-1140b791127a to group 75ab3c19-c4ad-40e7-8455-b5decb41d8da
+06:47:06  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/75ab3c19-c4ad-40e7-8455-b5decb41d8da/members/$ref "HTTP/1.1 204 No Content"
+06:47:06  INFO      user_bot.flows.bulk_user_onboarding  Row 2: groups 1/1 assigned.
+06:47:06  INFO      shared.graph_client.graph_client  Assigning license f30db892-07e9-47e9-837c-80727f46fd3d to user cc3ad2e2-92ec-4d6a-b51a-1140b791127a
+06:47:07  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users/cc3ad2e2-92ec-4d6a-b51a-1140b791127a/assignLicense "HTTP/1.1 200 OK"
+06:47:07  INFO      user_bot.flows.bulk_user_onboarding  Row 2: license 'MICROSOFT FLOW FREE' assigned.
+06:47:07  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_onboarding status=completed principal=cc3ad2e2-92ec-4d6a-b51a-1140b791127a
+06:47:07  INFO      user_bot.flows.bulk_user_onboarding  Row 2: status=completed duration=0.62s
+06:47:07  INFO      user_bot.flows.bulk_user_onboarding  Processing row 3/3: iambulkuser03@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:07  INFO      shared.graph_client.graph_client  Creating user: iambulkuser03@michaelkloudkrafthotmail.onmicrosoft.com
+06:47:07  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/users "HTTP/1.1 201 Created"
+06:47:07  INFO      shared.graph_client.graph_client  User created with ID: 617f3a0e-5501-4c81-85a5-d5e513691a8c
+06:47:07  INFO      user_bot.flows.bulk_user_onboarding  Row 3: account created user_id=617f3a0e-5501-4c81-85a5-d5e513691a8c
+06:47:07  INFO      shared.graph_client.graph_client  Adding user 617f3a0e-5501-4c81-85a5-d5e513691a8c to group 12761bce-2c06-4cf0-8820-76342656e1b2
+06:47:07  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/12761bce-2c06-4cf0-8820-76342656e1b2/members/$ref "HTTP/1.1 204 No Content"
+06:47:07  INFO      shared.graph_client.graph_client  Adding user 617f3a0e-5501-4c81-85a5-d5e513691a8c to group 75ab3c19-c4ad-40e7-8455-b5decb41d8da
+06:47:08  INFO      httpx  HTTP Request: POST https://graph.microsoft.com/v1.0/groups/75ab3c19-c4ad-40e7-8455-b5decb41d8da/members/$ref "HTTP/1.1 204 No Content"
+06:47:08  INFO      user_bot.flows.bulk_user_onboarding  Row 3: groups 2/2 assigned.
+06:47:08  INFO      shared.audit.audit_logger  Audit log -> file: flow=user_onboarding status=completed principal=617f3a0e-5501-4c81-85a5-d5e513691a8c
+06:47:08  INFO      user_bot.flows.bulk_user_onboarding  Row 3: status=completed duration=1.50s
+06:47:08  INFO      user_bot.flows.bulk_user_onboarding  Bulk user onboarding complete: total=3 completed=3 partial=0 failed=0 skipped=0 duration=3.53s dry_run=False
+
